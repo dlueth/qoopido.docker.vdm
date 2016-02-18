@@ -386,17 +386,9 @@ case "$1" in
 		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down for export"
 		;;
 	start)
-		# VM_TYPE=$(virt-what | sed -n 1p)
-		# dpkg -s packagename | grep Status
-		# mkdir -p /vdm
+		vm=$(virt-what | sed -n 1p)
 
-		# mounts=($(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d))
-		# for source in "${mounts[@]}"
-		# do
-		# 	target=${source/\/media\/sf_/\/shared\/}
-		#
-		# 	ln -s $source $target
-		# done
+		# Generate SSH keys
 		if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]
 		then
 			rm -rf /etc/ssh/ssh_host_rsa_key*
@@ -420,6 +412,41 @@ case "$1" in
 			rm -rf /etc/ssh/ssh_host_ed25519_key*
 			ssh-keygen -q -h -f /etc/ssh/ssh_host_ed25519_key -N '' -t ed25519
 		fi
+
+		# Initialize mounts
+		mkdir -p /vdm
+
+		case $vm in
+			vmware)
+				ln -sf /mnt/hgfs /shared
+				;;
+			virtualbox)
+				state=$(lsmod | grep vboxguest | sed -n 1p)
+
+				if [[ -z "$state" ]]
+				then
+					vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+					vbox_name="VBoxGuestAdditions_${vbox_version}"
+
+					(
+						( curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso ) \
+						&& ( mkdir -p /tmp/$vbox_name && mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name && /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force && rm -rf /opt/VBox* ) \
+						&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true ) \
+						&& ( umount -l /tmp/$vbox_name && rm -rf /tmp/* )
+					) > /dev/null 2>&1 & spinner "> installing VirtualBox Guest Additions"
+				fi
+
+				#mounts=($(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d))
+
+				#for source in "${mounts[@]}"
+				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
+				do
+					target=${source/\/media\/sf_/\/shared\/}
+
+					ln -sf $source $target
+				done
+				;;
+		esac
 		;;
 	stop)
 		clear mounts \
