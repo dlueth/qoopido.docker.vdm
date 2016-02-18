@@ -1,0 +1,1 @@
+# qoopido.docker.vdm
