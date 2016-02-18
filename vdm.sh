@@ -54,32 +54,32 @@ install()
 {
 	case "$1" in
 		localepurge)
-			( apt-get install -qy localepurge && configure localepurge )  > /dev/null 2>&1 & spinner "> installing localepurge"
+			( apt-get install -qy localepurge && configure localepurge ) > /dev/null 2>&1 & spinner "> installing localepurge"
 			;;
 		gcc)
-			( apt-get install -qy gcc )  > /dev/null 2>&1 & spinner "> installing gcc"
+			( apt-get install -qy gcc ) > /dev/null 2>&1 & spinner "> installing gcc"
 			;;
 		build-essential)
 			log "> installing build-essential"
 
-			( apt-get install -qy build-essential )  > /dev/null 2>&1 & spinner "> installing build-essential"
+			( apt-get install -qy build-essential ) > /dev/null 2>&1 & spinner "> installing build-essential"
 			;;
 		linux-headers-generic)
-			( apt-get install -qy linux-headers-generic )  > /dev/null 2>&1 & spinner "> installing linux-headers-generic"
+			( apt-get install -qy linux-headers-generic ) > /dev/null 2>&1 & spinner "> installing linux-headers-generic"
 			;;
 		openssh-server)
 			log "> installing openssh-server"
 
-			( apt-get install -qy openssh-server )  > /dev/null 2>&1 & spinner "> installing openssh-server"
+			( apt-get install -qy openssh-server ) > /dev/null 2>&1 & spinner "> installing openssh-server"
 			;;
 		deborphan)
-			( apt-get install -qy deborphan )  > /dev/null 2>&1 & spinner "> installing deborphan"
+			( apt-get install -qy deborphan ) > /dev/null 2>&1 & spinner "> installing deborphan"
 			;;
 		git)
-			( apt-get install -qy git && configure git )  > /dev/null 2>&1 & spinner "> installing git"
+			( apt-get install -qy git && configure git ) > /dev/null 2>&1 & spinner "> installing git"
 			;;
 		virt-what)
-			( apt-get install -qy virt-what )  > /dev/null 2>&1 & spinner "> installing virt-what"
+			( apt-get install -qy virt-what ) > /dev/null 2>&1 & spinner "> installing virt-what"
 			;;
 		docker)
 			configure docker
@@ -101,18 +101,6 @@ install()
 configure()
 {
 	case "$1" in
-		grub)
-			log "> configuring grub"
-			file="/etc/default/grub"
-
-			(
-				grep -q '^GRUB_HIDDEN_TIMEOUT_QUIET=' $file && sed -i 's/^GRUB_HIDDEN_TIMEOUT_QUIET=.*/GRUB_HIDDEN_TIMEOUT_QUIET=true/' $file || echo 'GRUB_HIDDEN_TIMEOUT_QUIET=true' >> $file \
-				&& grep -q '^GRUB_TIMEOUT=' $file && sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=0/' $file || echo 'GRUB_TIMEOUT=0' >> $file \
-				&& grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' $file && sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/' $file || echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"' >> $file \
-				&& grep -q '^GRUB_CMDLINE_LINUX=' $file && sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"/' $file || echo 'GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"' >> $file \
-				&& update-grub
-			) > /dev/null 2>&1
-			;;
 		interfaces)
 			log "> configuring interfaces"
 
@@ -142,6 +130,18 @@ configure()
 				sed -i -- 's/NEEDSCONFIGFIRST//g' /etc/locale.nopurge
 			fi
 			;;
+		grub)
+			log "> configuring grub"
+			file="/etc/default/grub"
+
+			(
+				grep -q '^GRUB_HIDDEN_TIMEOUT_QUIET=' $file && sed -i 's/^GRUB_HIDDEN_TIMEOUT_QUIET=.*/GRUB_HIDDEN_TIMEOUT_QUIET=true/' $file || echo 'GRUB_HIDDEN_TIMEOUT_QUIET=true' >> $file \
+				&& grep -q '^GRUB_TIMEOUT=' $file && sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=0/' $file || echo 'GRUB_TIMEOUT=0' >> $file \
+				&& grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' $file && sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/' $file || echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"' >> $file \
+				&& grep -q '^GRUB_CMDLINE_LINUX=' $file && sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"/' $file || echo 'GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"' >> $file \
+				&& update-grub
+			) > /dev/null 2>&1
+			;;
 		git)
 			log "> configuring git"
 
@@ -149,6 +149,7 @@ configure()
 			then
 				file="/etc/gitconfig"
 
+				cat /dev/null > $file
 				echo "[pack]" >> $file
 				echo "threads = 1" >> $file
 				echo "deltaCacheSize = 128m" >> $file
@@ -172,8 +173,26 @@ configure()
 				echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > /etc/apt/sources.list.d/docker.list
 			fi
 			;;
+		runscript)
+			log "> configuring runscript"
+
+			file="/lib/systemd/system/vdm.service"
+
+			cat /dev/null > $file
+			echo "[Unit]" >> $file
+			echo "Description=Virtual Docker Machine (VDM)" >> $file
+			echo "[Service]" >> $file
+			echo "Type=oneshot" >> $file
+			echo "ExecStart=/usr/sbin/vdm start" >> $file
+			echo "ExecStop=/usr/sbin/vdm stop" >> $file
+			echo "RemainAfterExit=yes" >> $file
+			echo "[Install]" >> $file
+			echo "WantedBy=multi-user.target" >> $file
+
+			( systemctl enable vdm.service ) > /dev/null 2>&1
+			;;
 		*)
-			error "> Usage: vdm configure {grub|interfaces|localepurge|git|docker}"
+			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker}"
 			exit 1
 			;;
 	esac
@@ -182,11 +201,14 @@ configure()
 update()
 {
 	case "$1" in
+		vdm)
+			( curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm && chmod +x /usr/sbin/vdm ) > /dev/null 2>&1 & spinner "> updating vdm"
+			;;
 		sources)
-			( apt-get update -qy )  > /dev/null 2>&1 & spinner "> updating sources"
+			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
 			;;
 		system)
-			( apt-get -qy upgrade && apt-get -qy dist-upgrade )  > /dev/null 2>&1 & spinner "> updating system"
+			( apt-get -qy upgrade && apt-get -qy dist-upgrade ) > /dev/null 2>&1 & spinner "> updating system"
 			;;
 		*)
 			error "> Usage: vdm update {sources|system}"
@@ -208,6 +230,8 @@ clear()
 			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & spinner "> clearing temporary directories"
 			;;
 		logs)
+			log "> clearing logfiles"
+
 			# remove .gz files
 			for file in $(find /var/log -type f -regex ".*\.gz$")
 			do
@@ -221,10 +245,13 @@ clear()
 			done
 
 			# remove samba logs (might leak ip-adresses)
-			for file in $(find /var/log/samba -type f)
-			do
-				rm -rf $file
-			done
+			if [ -d "/var/log/samba" ]
+			then
+				for file in $(find /var/log/samba -type f)
+				do
+					rm -rf $file
+				done
+			fi
 
 			# empty remaining
 			for file in $(find /var/log/ -type f)
@@ -321,11 +348,12 @@ clear()
 
 case "$1" in
 	install)
-		configure grub \
-		&& configure interfaces \
+		configure interfaces \
+		&& update vdm \
 		&& update sources \
 		&& install localepurge \
 		&& update system \
+		&& configure grub \
 		&& install git \
 		&& install gcc \
 		&& install build-essential \
@@ -334,18 +362,13 @@ case "$1" in
 		&& install deborphan \
 		&& install git \
 		&& install virt-what \
-		&& install docker
+		&& install docker \
+		&& configure runscript
 		;;
 	update)
-		update sources \
+		update vdm \
+		&& update sources \
 		&& update system
-		;;
-	build)
-		update sources \
-		&& update system \
-		&& clear all
-
-		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down for export"
 		;;
 	clear)
 		clear kernel \
@@ -355,8 +378,55 @@ case "$1" in
 		&& clear container \
 		&& clear images
 		;;
+	build)
+		update sources \
+		&& update system \
+		&& clear all
+
+		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down for export"
+		;;
+	start)
+		# VM_TYPE=$(virt-what | sed -n 1p)
+		# dpkg -s packagename | grep Status
+		# mkdir -p /vdm
+
+		# mounts=($(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d))
+		# for source in "${mounts[@]}"
+		# do
+		# 	target=${source/\/media\/sf_/\/shared\/}
+		#
+		# 	ln -s $source $target
+		# done
+		if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]
+		then
+			rm -rf /etc/ssh/ssh_host_rsa_key*
+			ssh-keygen -q -h -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
+		fi
+
+		if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]
+		then
+			rm -rf /etc/ssh/ssh_host_dsa_key*
+			ssh-keygen -q -h -f /etc/ssh/ssh_host_dsa_key -N '' -t dsa
+		fi
+
+		if [ ! -f "/etc/ssh/ssh_host_ecdsa_key" ]
+		then
+			rm -rf /etc/ssh/ssh_host_ecdsa_key*
+			ssh-keygen -q -h -f /etc/ssh/ssh_host_ecdsa_key -N '' -t ecdsa
+		fi
+
+		if [ ! -f "/etc/ssh/ssh_host_ed25519_key" ]
+		then
+			rm -rf /etc/ssh/ssh_host_ed25519_key*
+			ssh-keygen -q -h -f /etc/ssh/ssh_host_ed25519_key -N '' -t ed25519
+		fi
+		;;
+	stop)
+		clear mounts \
+		&& clear container
+		;;
 	*)
-		echo -e "Usage: vdm {install|update|build}"
+		echo -e "Usage: vdm {install|update|clear|build}"
 		exit 1
 		;;
 esac
