@@ -392,6 +392,15 @@ case "$1" in
 
 		notice "[VDM] install"
 
+		addgroup vdm > /dev/null 2>&1
+
+		for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
+		do
+			username=$(echo "${userdir}" | cut -sd / -f 3-)
+
+			adduser -q $username vdm
+		done
+
 		configure interfaces \
 		&& update sources \
 		&& install localepurge \
@@ -470,7 +479,7 @@ case "$1" in
 		fi
 
 		# Initialize mounts
-		mkdir -p /vdm
+		mkdir -p /vdm && chown root:vdm /vdm && chmod 770 /vdm
 
 		case $(virt-what | sed -n 1p) in
 			vmware)
@@ -487,6 +496,8 @@ case "$1" in
 		esac
 		;;
 	stop)
+		( docker stop -t 600 $(docker ps -a -q -f status=running) ) > /dev/null 2>&1
+
 		wipe mounts \
 		&& wipe container
 		;;
