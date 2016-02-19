@@ -300,6 +300,8 @@ wipe()
 				# VirtualBox
 				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
 				do
+					echo "found ${source}" >> /var/log/vdm.log
+
 					if grep -qs $source /proc/mounts;
 					then
 						echo "unmounting & removing ${source}" >> /var/log/vdm.log
