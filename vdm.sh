@@ -109,12 +109,6 @@ install()
 				&& umount -l /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
 			) > /dev/null 2>&1 & spinner "> installing virtualbox"
-
-			# cannot be combined with above due to VBoxLinuxAdditions.run exit status of 1 :(
-			#(
-			#	umount -l /tmp/$vbox_name \
-			#	&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
-			#) > /dev/null 2>&1
 			;;
 		*)
 			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
@@ -307,8 +301,10 @@ wipe()
 				do
 					if grep -qs $source /proc/mounts;
 					then
+						echo "unmounting & removing ${source}" >> /var/log/vdm.log
 						( umount -l $source && rm -rf $source ) > /dev/null 2>&1
 					else
+						echo "removing ${source}" >> /var/log/vdm.log
 						rm -rf $source
 					fi
 				done
