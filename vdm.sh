@@ -8,8 +8,6 @@ COLOR_NOTICE='\e[95m'
 COLOR_ERROR='\e[91m'
 COLOR_NONE='\e[39m'
 
-export DEBIAN_FRONTEND=noninteractive
-
 log()
 {
 	echo -e "$1" > /dev/stdout
@@ -43,6 +41,23 @@ spinner()
     done
     echo -ne "\b\b\b\n"
 }
+
+removeMount()
+{
+        echo $1 >> /var/log/vdm.log
+
+        if grep -qs $1 /proc/mounts;
+        then
+                echo "> unmounting ${1}" >> /var/log/vdm.log
+                umount -l $1 && rm -rf $1
+        else
+                echo "> removing ${1}" >> /var/log/vdm.log
+                rm -rf $1
+        fi
+}
+
+export DEBIAN_FRONTEND=noninteractive
+export -f removeMount
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
@@ -286,50 +301,14 @@ wipe()
 			(
 				rm -rf /vdm
 
-				# VMWare
-				if [ -d "/mnt/hgfs" ]
-				then
-					if grep -qs '/mnt/hgfs' /proc/mounts;
-					then
-						( umount -l /mnt/hgfs && rm -rf /mnt/hgfs ) > /dev/null 2>&1
-					else
-						rm -rf /mnt/hgfs
-					fi
-				fi
-
-				# VirtualBox
-				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
-				do
-					echo "found ${source}" >> /var/log/vdm.log
-
-					if grep -qs $source /proc/mounts;
-					then
-						echo "unmounting & removing ${source}" >> /var/log/vdm.log
-						umount -l $source
-						rm -rf $source
-					else
-						echo "removing ${source}" >> /var/log/vdm.log
-						rm -rf $source
-					fi
-				done
+				removeMount "/mnt/hgfs"
+				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'removeMount "$@"' bash {} \;
 			) > /dev/null 2>&1 & spinner "> wiping mount points"
-
 			;;
 		vmware)
 			;;
 		virtualbox)
 			(
-				# unmount mounts
-				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
-				do
-					if grep -qs $source /proc/mounts;
-					then
-						( umount -l $source && rm -rf $source ) > /dev/null 2>&1
-					else
-						rm -rf $source
-					fi
-				done
-
 				# uninstall
 				vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
 				vbox_name="VBoxGuestAdditions_${vbox_version}"
