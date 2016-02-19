@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh"
+VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
@@ -230,13 +230,10 @@ update()
 			) > /dev/null 2>&1 & spinner "> updating system"
 			;;
 		vdm)
-			(
-				curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm \
-				&& chmod +x /usr/sbin/vdm
-			) > /dev/null 2>&1 & spinner "> updating vdm"
+			bash <(curl -s $VDM_URL_UPDATE)
 			;;
 		*)
-			error "> Usage: vdm update {sources|system}"
+			error "> Usage: vdm update {sources|system|vdm}"
 			exit 1
 		;;
 	esac

@@ -45,6 +45,5 @@ fi
 
 (
 	curl -s $VDM_URL > /usr/sbin/vdm \
-	&& chmod +x /usr/sbin/vdm \
-	&& /usr/sbin/vdm install
-)  > /dev/null 2>&1 & spinner "> installing vdm"
+	&& chmod +x /usr/sbin/vdm
+)  > /dev/null 2>&1 & spinner "> updating vdm"
