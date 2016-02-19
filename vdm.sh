@@ -83,10 +83,11 @@ install()
 			( apt-get install -qy virt-what ) > /dev/null 2>&1 & spinner "> installing virt-what"
 			;;
 		docker)
+			configure docker \
+			&& update sources
+
 			(
-				configure docker \
-				&& update sources \
-				&& apt-get remove lxc-docker --purge \
+				apt-get remove lxc-docker --purge \
 				&& apt-get install linux-image-extra-$(uname -r) \
 				&& apt-get install docker-engine \
 				&& apt-get install docker-compose
@@ -122,19 +123,19 @@ configure()
 {
 	case "$1" in
 		interfaces)
-			log "> configuring interfaces"
+			(
+				for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
+				do
+					state=$(grep $interface /etc/network/interfaces)
 
-			for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
-			do
-				state=$(grep $interface /etc/network/interfaces)
-
-				if [[ -z "$state" ]]
-				then
-					echo "" >> /etc/network/interfaces
-					echo "auto ${interface}" >> /etc/network/interfaces
-					echo "iface ${interface} inet dhcp" >> /etc/network/interfaces
-				fi
-			done
+					if [[ -z "$state" ]]
+					then
+						echo "" >> /etc/network/interfaces
+						echo "auto ${interface}" >> /etc/network/interfaces
+						echo "iface ${interface} inet dhcp" >> /etc/network/interfaces
+					fi
+				done
+			) > /dev/null 2>&1 & spinner "> configuring interfaces"
 			;;
 		localepurge)
 			log "> configuring localepurge"
