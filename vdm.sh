@@ -305,7 +305,8 @@ wipe()
 					if grep -qs $source /proc/mounts;
 					then
 						echo "unmounting & removing ${source}" >> /var/log/vdm.log
-						( umount -l $source && rm -rf $source ) > /dev/null 2>&1
+						umount -l $source
+						rm -rf $source
 					else
 						echo "removing ${source}" >> /var/log/vdm.log
 						rm -rf $source
