@@ -220,12 +220,6 @@ configure()
 update()
 {
 	case "$1" in
-		vdm)
-			# ( curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm ) > /dev/null 2>&1 & spinner "> updating vdm"
-			# exec curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm
-
-			trap "echo \"> updating vdm\" && curl -s ${VDM_URL} > /usr/sbin/vdm && chmod +x /usr/sbin/vdm" EXIT
-			;;
 		sources)
 			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
 			;;
@@ -233,7 +227,7 @@ update()
 			( apt-get -qy upgrade && apt-get -qy dist-upgrade ) > /dev/null 2>&1 & spinner "> updating system"
 			;;
 		*)
-			error "> Usage: vdm update {vdm|sources|system}"
+			error "> Usage: vdm update {sources|system}"
 			exit 1
 		;;
 	esac
@@ -406,7 +400,7 @@ wipe()
 
 case "$1" in
 	debug)
-		echo "here 2"
+		echo "here 3"
 		;;
 	install)
 		clear
@@ -414,7 +408,6 @@ case "$1" in
 		notice "[VDM] install"
 
 		configure interfaces \
-		&& update vdm \
 		&& update sources \
 		&& install localepurge \
 		&& update system \
@@ -438,8 +431,9 @@ case "$1" in
 		notice "[VDM] update"
 
 		update sources \
-		&& update system \
-		&& update vdm
+		&& update system
+
+		exec bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)
 		;;
 	wipe)
 		clear
