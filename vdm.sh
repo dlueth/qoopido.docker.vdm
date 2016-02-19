@@ -119,8 +119,8 @@ configure()
 		interfaces)
 			log "> configuring interfaces"
 
+			# @todo check if loop works and remove old code
 			# interfaces=($(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d'))
-
 			# for interface in "${interfaces[@]}"
 			for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
 			do
@@ -447,8 +447,6 @@ case "$1" in
 		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down for export"
 		;;
 	start)
-		vm=$(virt-what | sed -n 1p)
-
 		# Generate SSH keys
 		if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]
 		then
@@ -477,9 +475,9 @@ case "$1" in
 		# Initialize mounts
 		mkdir -p /vdm
 
-		case $vm in
+		case $(virt-what | sed -n 1p) in
 			vmware)
-				ln -sf /mnt/hgfs /shared
+				ln -sf /mnt/hgfs /vdm
 				;;
 			virtualbox)
 				state=$(lsmod | grep vboxguest | sed -n 1p)
@@ -491,7 +489,7 @@ case "$1" in
 
 				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
 				do
-					target=${source/\/media\/sf_/\/shared\/}
+					target=${source/\/media\/sf_/\/vdm\/}
 
 					ln -sf $source $target
 				done
