@@ -400,7 +400,7 @@ wipe()
 
 case "$1" in
 	debug)
-		echo "here 4"
+		echo "here 5"
 		;;
 	install)
 		clear
@@ -431,9 +431,15 @@ case "$1" in
 		notice "[VDM] update"
 
 		update sources \
-		&& update system
+		&& update system \
+		&&
+		(
+			curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm \
+			&& chmod +x /usr/sbin/vdm \
+			&& /usr/sbin/vdm install
+		) > /dev/null 2>&1 & spinner "> updating vdm"
 
-		exec bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)
+		# exec bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)
 		;;
 	wipe)
 		clear
