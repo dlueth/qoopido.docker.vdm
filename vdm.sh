@@ -489,6 +489,7 @@ case "$1" in
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
 					install virtualbox
+					sleep 5
 				fi
 
 				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'createMount "$@"' bash {} \;
