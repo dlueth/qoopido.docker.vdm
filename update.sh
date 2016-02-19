@@ -33,13 +33,19 @@ spinner()
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
-	error "> This script targets Ubuntu 15.10 specifically!"
+	error "This script targets Ubuntu 15.10 specifically!"
 	exit 1
 fi
 
 if [ ! $(whoami) = 'root' ];
 then
-	error "> This script may only be run as root!"
+	error "This script may only be run as root!"
+	exit 1
+fi
+
+if [ $(systemctl is-active vdm.service) = 'unknown' ];
+then
+	error "You need to have VDM installed!"
 	exit 1
 fi
 

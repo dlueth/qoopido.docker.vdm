@@ -105,13 +105,16 @@ install()
 				&& mkdir -p /tmp/$vbox_name \
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force \
-				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true )
+				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true ) \
+				&& umount -l /tmp/$vbox_name \
+				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox*
 			) > /dev/null 2>&1 & spinner "> installing virtualbox"
 
-			(
-				umount -l /tmp/$vbox_name \
-				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox*
-			) > /dev/null 2>&1
+			# @todo check of copying the two lines to above () did work
+			#(
+			#	umount -l /tmp/$vbox_name \
+			#	&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox*
+			#) > /dev/null 2>&1
 			;;
 		*)
 			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
@@ -139,76 +142,73 @@ configure()
 			) > /dev/null 2>&1 & spinner "> configuring interfaces"
 			;;
 		localepurge)
-			log "> configuring localepurge"
+			(
+				if grep -qs NEEDSCONFIGFIRST /etc/locale.nopurge
+				then
+					locale=$(locale | grep LANG= | cut -d= -f2)
 
-			if grep -qs NEEDSCONFIGFIRST /etc/locale.nopurge
-			then
-				locale=$(locale | grep LANG= | cut -d= -f2)
-
-				echo "${locale}" >> /etc/locale.nopurge
-				sed -i -- 's/NEEDSCONFIGFIRST//g' /etc/locale.nopurge
-			fi
+					echo "${locale}" >> /etc/locale.nopurge
+					sed -i -- 's/NEEDSCONFIGFIRST//g' /etc/locale.nopurge
+				fi
+			) > /dev/null 2>&1 & spinner "> configuring localepurge"
 			;;
 		grub)
-			log "> configuring grub"
-			file="/etc/default/grub"
-
 			(
-				grep -q '^GRUB_HIDDEN_TIMEOUT_QUIET=' $file && sed -i 's/^GRUB_HIDDEN_TIMEOUT_QUIET=.*/GRUB_HIDDEN_TIMEOUT_QUIET=true/' $file || echo 'GRUB_HIDDEN_TIMEOUT_QUIET=true' >> $file \
+				file="/etc/default/grub" \
+				&& grep -q '^GRUB_HIDDEN_TIMEOUT_QUIET=' $file && sed -i 's/^GRUB_HIDDEN_TIMEOUT_QUIET=.*/GRUB_HIDDEN_TIMEOUT_QUIET=true/' $file || echo 'GRUB_HIDDEN_TIMEOUT_QUIET=true' >> $file \
 				&& grep -q '^GRUB_TIMEOUT=' $file && sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=0/' $file || echo 'GRUB_TIMEOUT=0' >> $file \
 				&& grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' $file && sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/' $file || echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"' >> $file \
 				&& grep -q '^GRUB_CMDLINE_LINUX=' $file && sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"/' $file || echo 'GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"' >> $file \
 				&& update-grub
-			) > /dev/null 2>&1
+			) > /dev/null 2>&1 & spinner "> configuring grub"
 			;;
 		git)
-			log "> configuring git"
+			(
+				if [ ! -f "/etc/gitconfig" ]
+				then
+					file="/etc/gitconfig"
 
-			if [ ! -f "/etc/gitconfig" ]
-			then
-				file="/etc/gitconfig"
-
-				cat /dev/null > $file
-				echo "[pack]" >> $file
-				echo "threads = 1" >> $file
-				echo "deltaCacheSize = 128m" >> $file
-				echo "packSizeLimit = 128m" >> $file
-				echo "windowMemory = 128m" >> $file
-				echo "[core]" >> $file
-				echo "packedGitLimit = 128m" >> $file
-				echo "packedGitWindowSize = 128m" >> $file
-			fi
+					cat /dev/null > $file
+					echo "[pack]" >> $file
+					echo "threads = 1" >> $file
+					echo "deltaCacheSize = 128m" >> $file
+					echo "packSizeLimit = 128m" >> $file
+					echo "windowMemory = 128m" >> $file
+					echo "[core]" >> $file
+					echo "packedGitLimit = 128m" >> $file
+					echo "packedGitWindowSize = 128m" >> $file
+				fi
+			) > /dev/null 2>&1 & spinner "> configuring git"
 			;;
 		docker)
-			log "> configuring docker"
-
 			(
 				apt-get install -qy apt-transport-https ca-certificates \
 				&& apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-			) > /dev/null 2>&1
 
-			if [ ! -f "/etc/apt/sources.list.d/docker.list" ]
-			then
-				echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > /etc/apt/sources.list.d/docker.list
-			fi
+				if [ ! -f "/etc/apt/sources.list.d/docker.list" ]
+				then
+					echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > /etc/apt/sources.list.d/docker.list
+				fi
+			) > /dev/null 2>&1 & spinner "> configuring docker"
 			;;
 		runscript)
-			log "> configuring runscript"
+			(
+				file="/lib/systemd/system/vdm.service"
 
-			file="/lib/systemd/system/vdm.service"
+				cat /dev/null > $file
+				echo "[Unit]" >> $file
+				echo "Description=Virtual Docker Machine (VDM)" >> $file
+				echo "[Service]" >> $file
+				echo "Type=oneshot" >> $file
+				echo "ExecStart=/usr/sbin/vdm start" >> $file
+				echo "ExecStop=/usr/sbin/vdm stop" >> $file
+				echo "RemainAfterExit=yes" >> $file
+				echo "[Install]" >> $file
+				echo "WantedBy=multi-user.target" >> $file
 
-			cat /dev/null > $file
-			echo "[Unit]" >> $file
-			echo "Description=Virtual Docker Machine (VDM)" >> $file
-			echo "[Service]" >> $file
-			echo "Type=oneshot" >> $file
-			echo "ExecStart=/usr/sbin/vdm start" >> $file
-			echo "ExecStop=/usr/sbin/vdm stop" >> $file
-			echo "RemainAfterExit=yes" >> $file
-			echo "[Install]" >> $file
-			echo "WantedBy=multi-user.target" >> $file
-
-			( systemctl enable vdm.service ) > /dev/null 2>&1
+				systemctl enable vdm.service
+				systemctl restart vdm.service
+			) > /dev/null 2>&1 & spinner "> configuring runscript"
 			;;
 		*)
 			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|runscript}"
@@ -252,34 +252,34 @@ wipe()
 			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & spinner "> wiping temporary directories"
 			;;
 		logs)
-			log "> wiping logfiles"
-
-			# remove .gz files
-			for file in $(find /var/log -type f -regex ".*\.gz$")
-			do
-				rm -rf $file
-			done
-
-			# remove rotated logfiles
-			for file in $(find /var/log -type f -regex ".*\.[0-9]$")
-			do
-				rm -rf $file
-			done
-
-			# remove samba logs (might leak ip-adresses)
-			if [ -d "/var/log/samba" ]
-			then
-				for file in $(find /var/log/samba -type f)
+			(
+				# remove .gz files
+				for file in $(find /var/log -type f -regex ".*\.gz$")
 				do
 					rm -rf $file
 				done
-			fi
 
-			# empty remaining
-			for file in $(find /var/log/ -type f)
-			do
-				cp /dev/null $file
-			done
+				# remove rotated logfiles
+				for file in $(find /var/log -type f -regex ".*\.[0-9]$")
+				do
+					rm -rf $file
+				done
+
+				# remove samba logs (might leak ip-adresses)
+				if [ -d "/var/log/samba" ]
+				then
+					for file in $(find /var/log/samba -type f)
+					do
+						rm -rf $file
+					done
+				fi
+
+				# empty remaining
+				for file in $(find /var/log/ -type f)
+				do
+					cp /dev/null $file
+				done
+			) > /dev/null 2>&1 & spinner "> wiping logfiles"
 			;;
 		container)
 			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> wiping docker container"
@@ -288,65 +288,64 @@ wipe()
 			( docker rmi $(docker images -q) ) > /dev/null 2>&1 & spinner "> wiping docker images"
 			;;
 		mounts)
-			log "> wiping mount points"
+			(
+				rm -rf /vdm
 
-			rm -rf /vdm
-
-			# VMWare
-			if [ -d "/mnt/hgfs" ]
-			then
-				if grep -qs '/mnt/hgfs' /proc/mounts;
+				# VMWare
+				if [ -d "/mnt/hgfs" ]
 				then
-					( umount -l /mnt/hgfs && rm -rf /mnt/hgfs ) > /dev/null 2>&1
-				else
-					rm -rf /mnt/hgfs
+					if grep -qs '/mnt/hgfs' /proc/mounts;
+					then
+						( umount -l /mnt/hgfs && rm -rf /mnt/hgfs ) > /dev/null 2>&1
+					else
+						rm -rf /mnt/hgfs
+					fi
 				fi
-			fi
 
-			# VirtualBox
-			for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
-			do
-				if grep -qs $source /proc/mounts;
-				then
-					( umount -l $source && rm -rf $source ) > /dev/null 2>&1
-				else
-					rm -rf $source
-				fi
-			done
+				# VirtualBox
+				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
+				do
+					if grep -qs $source /proc/mounts;
+					then
+						( umount -l $source && rm -rf $source ) > /dev/null 2>&1
+					else
+						rm -rf $source
+					fi
+				done
+			) > /dev/null 2>&1 & spinner "> wiping mount points"
+
 			;;
 		vmware)
 			;;
 		virtualbox)
-			# unmount mounts
-			for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
-			do
-				if grep -qs $source /proc/mounts;
-				then
-					( umount -l $source && rm -rf $source ) > /dev/null 2>&1
-				else
-					rm -rf $source
-				fi
-			done
-
-			# uninstall
-			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-			vbox_name="VBoxGuestAdditions_${vbox_version}"
-
 			(
+				# unmount mounts
+				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
+				do
+					if grep -qs $source /proc/mounts;
+					then
+						( umount -l $source && rm -rf $source ) > /dev/null 2>&1
+					else
+						rm -rf $source
+					fi
+				done
+
+				# uninstall
+				vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+				vbox_name="VBoxGuestAdditions_${vbox_version}"
+
 				curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
 				&& mkdir -p /tmp/$vbox_name \
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force
-			) > /dev/null 2>&1 & spinner "> wiping virtualbox"
 
-			# cleanup
-			(
+				# cleanup
 				umount -l /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox* \
 				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
 				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
 				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
-			) > /dev/null 2>&1
+			) > /dev/null 2>&1 & spinner "> wiping virtualbox"
 			;;
 		ssh)
 			( rm -rf /etc/ssh/ssh_host_* ) > /dev/null 2>&1 & spinner "> wiping ssh keys"
@@ -495,9 +494,7 @@ case "$1" in
 				ln -sf /mnt/hgfs /vdm
 				;;
 			virtualbox)
-				state=$(lsmod | grep vboxguest | sed -n 1p)
-
-				if [[ -z "$state" ]]
+				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
 					install virtualbox
 				fi
