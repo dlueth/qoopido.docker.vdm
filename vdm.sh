@@ -400,7 +400,7 @@ wipe()
 
 case "$1" in
 	debug)
-		echo "here 5"
+		echo "here 6"
 		;;
 	install)
 		clear
