@@ -3,7 +3,7 @@
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
-#COLOR_LOG='\e[95m'
+COLOR_NOTICE='\e[95m'
 COLOR_ERROR='\e[91m'
 COLOR_NONE='\e[39m'
 
@@ -12,6 +12,11 @@ export DEBIAN_FRONTEND=noninteractive
 log()
 {
 	echo -e "$1" > /dev/stdout
+}
+
+notice()
+{
+	echo -e "${COLOR_NOTICE}$1${COLOR_NONE}" > /dev/stdout
 }
 
 error()
@@ -398,6 +403,8 @@ case "$1" in
 	install)
 		clear
 
+		notice "[VDM] install"
+
 		configure interfaces \
 		&& update vdm \
 		&& update sources \
@@ -420,12 +427,16 @@ case "$1" in
 	update)
 		clear
 
+		notice "[VDM] update"
+
 		update vdm \
 		&& update sources \
 		&& update system
 		;;
-	clear)
+	wipe)
 		clear
+
+		notice "[VDM] wipe"
 
 		wipe kernel \
 		&& wipe apt \
@@ -435,6 +446,9 @@ case "$1" in
 		&& wipe images
 		;;
 	build)
+		clear
+
+		notice "[VDM] build"
 
 		update sources \
 		&& update system \
