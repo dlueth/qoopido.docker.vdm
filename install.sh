@@ -24,5 +24,5 @@ then
 fi
 
 curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm \
-&& chmod +x /usr/sbin/vdm \
-&& /usr/sbin/vdm install
+chmod +x /usr/sbin/vdm \
+/usr/sbin/vdm install
