@@ -392,13 +392,13 @@ case "$1" in
 
 		notice "[VDM] install"
 
-		addgroup vdm > /dev/null 2>&1
+		addgroup vboxsf > /dev/null 2>&1
 
 		for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
 		do
 			username=$(echo "${userdir}" | cut -sd / -f 3-)
 
-			adduser -q $username vdm
+			adduser -q $username vboxsf
 		done
 
 		configure interfaces \
