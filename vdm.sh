@@ -221,8 +221,10 @@ update()
 {
 	case "$1" in
 		vdm)
-			#( curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm ) > /dev/null 2>&1 & spinner "> updating vdm"
-			exec curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm
+			# ( curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm ) > /dev/null 2>&1 & spinner "> updating vdm"
+			# exec curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm
+
+			trap "echo \"> updating vdm\" && curl -s ${VDM_URL} > /usr/sbin/vdm && chmod +x /usr/sbin/vdm" EXIT
 			;;
 		sources)
 			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
