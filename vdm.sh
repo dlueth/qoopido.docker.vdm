@@ -60,16 +60,12 @@ install()
 			( apt-get install -qy gcc ) > /dev/null 2>&1 & spinner "> installing gcc"
 			;;
 		build-essential)
-			log "> installing build-essential"
-
 			( apt-get install -qy build-essential ) > /dev/null 2>&1 & spinner "> installing build-essential"
 			;;
 		linux-headers-generic)
 			( apt-get install -qy linux-headers-generic ) > /dev/null 2>&1 & spinner "> installing linux-headers-generic"
 			;;
 		openssh-server)
-			log "> installing openssh-server"
-
 			( apt-get install -qy openssh-server ) > /dev/null 2>&1 & spinner "> installing openssh-server"
 			;;
 		deborphan)
@@ -334,7 +330,7 @@ wipe()
 				&& mkdir -p /tmp/$vbox_name \
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force
-			) > /dev/null 2>&1 & spinner "> installing VirtualBox Guest Additions"
+			) > /dev/null 2>&1 & spinner "> wiping virtualbox"
 
 			# cleanup
 			# @todo check if paths are sufficient
