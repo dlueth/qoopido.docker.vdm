@@ -103,7 +103,7 @@ install()
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force \
 				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true )
-			) > /dev/null 2>&1 & spinner "> installing VirtualBox Guest Additions"
+			) > /dev/null 2>&1 & spinner "> installing virtualbox"
 
 			(
 				umount -l /tmp/$vbox_name \
@@ -412,6 +412,8 @@ case "$1" in
 		&& install localepurge \
 		&& update system \
 		&& configure grub \
+		&& wipe vmware \
+		&& wipe virtualbox \
 		&& install git \
 		&& install gcc \
 		&& install build-essential \
