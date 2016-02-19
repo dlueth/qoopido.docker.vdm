@@ -403,6 +403,9 @@ wipe()
 }
 
 case "$1" in
+	debug)
+		echo "here"
+		;;
 	install)
 		clear
 
