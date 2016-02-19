@@ -230,7 +230,7 @@ update()
 			) > /dev/null 2>&1 & spinner "> updating system"
 			;;
 		vdm)
-			bash <(curl -s $VDM_URL_UPDATE)
+			exec bash <(curl -s $VDM_URL_UPDATE)
 			;;
 		*)
 			error "> Usage: vdm update {sources|system|vdm}"
@@ -405,9 +405,6 @@ wipe()
 }
 
 case "$1" in
-	debug)
-		echo "here 8"
-		;;
 	install)
 		clear
 
@@ -437,10 +434,9 @@ case "$1" in
 		notice "[VDM] update"
 
 		update sources \
-		&& update system \
-		&& update vdm
+		&& update system
 
-		# exec bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)
+		update vdm
 		;;
 	wipe)
 		clear
