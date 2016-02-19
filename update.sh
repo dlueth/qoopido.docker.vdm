@@ -45,5 +45,6 @@ fi
 
 (
 	curl -s $VDM_URL > /usr/sbin/vdm \
-	&& chmod +x /usr/sbin/vdm
+	&& chmod +x /usr/sbin/vdm \
+	&& systemctl restart vdm.service
 )  > /dev/null 2>&1 & spinner "> updating vdm"
