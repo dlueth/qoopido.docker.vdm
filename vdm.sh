@@ -276,6 +276,7 @@ wipe()
 			) > /dev/null 2>&1 & spinner "> wiping logfiles"
 			;;
 		container)
+			echo "removing container" >> /var/log/vdm.log
 			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> wiping docker container"
 			;;
 		images)
