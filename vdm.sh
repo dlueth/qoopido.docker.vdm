@@ -61,6 +61,7 @@ createMount()
 
 export DEBIAN_FRONTEND=noninteractive
 export -f removeMount
+export -f createMount
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
