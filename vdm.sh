@@ -56,7 +56,7 @@ createMount()
 {
 	target=${1/\/media\/sf_/\/vdm\/}
 
-	ln -sf $1 $target
+	ln -sf $1 $target && chown root:vdm $target && chmod 770 $target
 }
 
 export DEBIAN_FRONTEND=noninteractive
@@ -479,11 +479,11 @@ case "$1" in
 		fi
 
 		# Initialize mounts
-		mkdir -p /vdm && chown root:vdm /vdm && chmod 770 /vdm
+		mkdir -p /vdm
 
 		case $(virt-what | sed -n 1p) in
 			vmware)
-				ln -sf /mnt/hgfs /vdm
+				ln -sf /mnt/hgfs /vdm && chown root:vdm /vdm && chmod 770 /vdm
 				;;
 			virtualbox)
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
