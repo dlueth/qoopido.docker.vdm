@@ -337,8 +337,8 @@ wipe()
 			(
 				umount -l /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox* \
-				&& find /lib -name "VBox*" -type f -exec rm -rf {} \; \
-				&& find /lib -name "vbox*" -type f -exec rm -rf {} \;
+				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
+				&& find /var/ -iname "vbox*" -type f -exec rm -rf {} \;
 			) > /dev/null 2>&1
 			;;
 		ssh)
