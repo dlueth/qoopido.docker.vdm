@@ -105,13 +105,14 @@ install()
 				&& mkdir -p /tmp/$vbox_name \
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force \
+				&& rm -rf /opt/VBox* \
 				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true )
 			) > /dev/null 2>&1 & spinner "> installing virtualbox"
 
 			# cannot be combined with above due to VBoxLinuxAdditions.run exit status of 1 :(
 			(
 				umount -l /tmp/$vbox_name \
-				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox*
+				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
 			) > /dev/null 2>&1
 			;;
 		*)
