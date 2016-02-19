@@ -224,7 +224,16 @@ update()
 			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
 			;;
 		system)
-			( apt-get -qy upgrade && apt-get -qy dist-upgrade ) > /dev/null 2>&1 & spinner "> updating system"
+			(
+				apt-get -qy upgrade \
+				&& apt-get -qy dist-upgrade
+			) > /dev/null 2>&1 & spinner "> updating system"
+			;;
+		vdm)
+			(
+				curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm \
+				&& chmod +x /usr/sbin/vdm
+			) > /dev/null 2>&1 & spinner "> updating vdm"
 			;;
 		*)
 			error "> Usage: vdm update {sources|system}"
@@ -400,7 +409,7 @@ wipe()
 
 case "$1" in
 	debug)
-		echo "here 6"
+		echo "here 7"
 		;;
 	install)
 		clear
@@ -432,12 +441,7 @@ case "$1" in
 
 		update sources \
 		&& update system \
-		&&
-		(
-			curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm \
-			&& chmod +x /usr/sbin/vdm \
-			&& /usr/sbin/vdm install
-		) > /dev/null 2>&1 & spinner "> updating vdm"
+		&& update vdm
 
 		# exec bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)
 		;;
