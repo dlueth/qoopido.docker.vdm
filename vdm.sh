@@ -44,16 +44,19 @@ spinner()
 
 removeMount()
 {
-        echo $1 >> /var/log/vdm.log
-
         if grep -qs $1 /proc/mounts;
         then
-                echo "> unmounting ${1}" >> /var/log/vdm.log
                 umount -l $1 && rm -rf $1
         else
-                echo "> removing ${1}" >> /var/log/vdm.log
                 rm -rf $1
         fi
+}
+
+createMount()
+{
+	target=${1/\/media\/sf_/\/vdm\/}
+
+	ln -sf $1 $target
 }
 
 export DEBIAN_FRONTEND=noninteractive
@@ -478,12 +481,7 @@ case "$1" in
 					install virtualbox
 				fi
 
-				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
-				do
-					target=${source/\/media\/sf_/\/vdm\/}
-
-					ln -sf $source $target
-				done
+				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'createMount "$@"' bash {} \;
 				;;
 		esac
 		;;
