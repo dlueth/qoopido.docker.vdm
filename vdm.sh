@@ -78,10 +78,10 @@ install()
 			( apt-get install -qy virt-what ) > /dev/null 2>&1 & spinner "> installing virt-what"
 			;;
 		docker)
-			configure docker
-
 			(
-				apt-get remove lxc-docker --purge \
+				configure docker \
+				&& update sources \
+				&& apt-get remove lxc-docker --purge \
 				&& apt-get install linux-image-extra-$(uname -r) \
 				&& apt-get install docker-engine \
 				&& apt-get install docker-compose
@@ -119,9 +119,6 @@ configure()
 		interfaces)
 			log "> configuring interfaces"
 
-			# @todo check if loop works and remove old code
-			# interfaces=($(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d'))
-			# for interface in "${interfaces[@]}"
 			for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
 			do
 				state=$(grep $interface /etc/network/interfaces)
@@ -207,7 +204,7 @@ configure()
 			( systemctl enable vdm.service ) > /dev/null 2>&1
 			;;
 		*)
-			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker}"
+			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|runscript}"
 			exit 1
 			;;
 	esac
@@ -226,7 +223,7 @@ update()
 			( apt-get -qy upgrade && apt-get -qy dist-upgrade ) > /dev/null 2>&1 & spinner "> updating system"
 			;;
 		*)
-			error "> Usage: vdm update {sources|system}"
+			error "> Usage: vdm update {vdm|sources|system}"
 			exit 1
 		;;
 	esac
@@ -333,12 +330,12 @@ wipe()
 			) > /dev/null 2>&1 & spinner "> wiping virtualbox"
 
 			# cleanup
-			# @todo check if paths are sufficient
 			(
 				umount -l /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox* \
 				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
-				&& find /var/ -iname "vbox*" -type f -exec rm -rf {} \;
+				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
+				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
 			) > /dev/null 2>&1
 			;;
 		ssh)
@@ -369,7 +366,6 @@ wipe()
 			done
 
 			# locate/mlocate
-			# @todo check how to deal with mlocate in general
 			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & spinner "> wiping mlocate.db"
 			;;
 		filesystem)
@@ -392,7 +388,7 @@ wipe()
 			&& wipe filesystem
 			;;
 		*)
-			error "> Usage: vdm wipe {all|kernel|apt|temp|logs|container|images|mounts|ssh|data|filesystem}"
+			error "> Usage: vdm wipe {all|kernel|apt|temp|logs|container|images|mounts|vmware|virtualbox|ssh|data|filesystem}"
 			exit 1
 		;;
 	esac
