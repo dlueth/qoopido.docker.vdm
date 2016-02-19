@@ -91,8 +91,27 @@ install()
 				&& apt-get install docker-compose
 			) > /dev/null 2>&1 & spinner "> installing docker"
 			;;
+		vmware)
+			;;
+		virtualbox)
+			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+			vbox_name="VBoxGuestAdditions_${vbox_version}"
+
+			(
+				curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
+				&& mkdir -p /tmp/$vbox_name \
+				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
+				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force \
+				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true )
+			) > /dev/null 2>&1 & spinner "> installing VirtualBox Guest Additions"
+
+			(
+				umount -l /tmp/$vbox_name \
+				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox*
+			) > /dev/null 2>&1
+			;;
 		*)
-			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker}"
+			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
 			exit 1
 		;;
 	esac
@@ -217,20 +236,20 @@ update()
 	esac
 }
 
-clear()
+wipe()
 {
 	case "$1" in
 		kernel)
-			( dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge ) > /dev/null 2>&1 & spinner "> clearing unused kernel"
+			( dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge ) > /dev/null 2>&1 & spinner "> wiping unused kernel"
 			;;
 		apt)
-			( apt-get -qy clean && apt-get -qy autoclean && apt-get -qy autoremove --purge && deborphan | xargs apt-get -qy remove --purge ) > /dev/null 2>&1 & spinner "> clearing apt leftovers"
+			( apt-get -qy clean && apt-get -qy autoclean && apt-get -qy autoremove --purge && deborphan | xargs apt-get -qy remove --purge ) > /dev/null 2>&1 & spinner "> wiping apt leftovers"
 			;;
 		temp)
-			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & spinner "> clearing temporary directories"
+			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & spinner "> wiping temporary directories"
 			;;
 		logs)
-			log "> clearing logfiles"
+			log "> wiping logfiles"
 
 			# remove .gz files
 			for file in $(find /var/log -type f -regex ".*\.gz$")
@@ -260,13 +279,13 @@ clear()
 			done
 			;;
 		container)
-			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> clearing docker container"
+			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> wiping docker container"
 			;;
 		images)
-			( docker rmi $(docker images -q) ) > /dev/null 2>&1 & spinner "> clearing docker images"
+			( docker rmi $(docker images -q) ) > /dev/null 2>&1 & spinner "> wiping docker images"
 			;;
 		mounts)
-			log "> clearing mount points"
+			log "> wiping mount points"
 
 			rm -rf /vdm
 
@@ -292,8 +311,42 @@ clear()
 				fi
 			done
 			;;
+		vmware)
+			;;
+		virtualbox)
+			# unmount mounts
+			for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
+			do
+				if grep -qs $source /proc/mounts;
+				then
+					( umount -l $source && rm -rf $source ) > /dev/null 2>&1
+				else
+					rm -rf $source
+				fi
+			done
+
+			# uninstall
+			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+			vbox_name="VBoxGuestAdditions_${vbox_version}"
+
+			(
+				curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
+				&& mkdir -p /tmp/$vbox_name \
+				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
+				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force
+			) > /dev/null 2>&1 & spinner "> installing VirtualBox Guest Additions"
+
+			# cleanup
+			# @todo check if paths are sufficient
+			(
+				umount -l /tmp/$vbox_name \
+				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox* \
+				&& find /lib -name "VBox*" -type f -exec rm -rf {} \; \
+				&& find /lib -name "vbox*" -type f -exec rm -rf {} \;
+			) > /dev/null 2>&1
+			;;
 		ssh)
-			( rm -rf /etc/ssh/ssh_host_* ) > /dev/null 2>&1 & spinner "> clearing ssh keys"
+			( rm -rf /etc/ssh/ssh_host_* ) > /dev/null 2>&1 & spinner "> wiping ssh keys"
 			;;
 		data)
 			# root user
@@ -303,7 +356,7 @@ clear()
 				&& find ~/ -name ".ssh" -type d -exec rm -rf {} \; \
 				&& find ~/ -name ".docker" -type d -exec rm -rf {} \; \
 				&& find ~/ -name ".nano_history" -type f -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> clearing private user data (root)"
+			) > /dev/null 2>&1 & spinner "> wiping private user data (root)"
 
 			# other user
 			for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
@@ -316,31 +369,34 @@ clear()
 					&& find $userdir -name ".ssh" -type d -exec rm -rf {} \; \
 					&& find $userdir -name ".docker" -type d -exec rm -rf {} \; \
 					&& find $userdir -name ".nano_history" -type f -exec rm -rf {} \;
-				) > /dev/null 2>&1 & spinner "> clearing private user data (${username})"
+				) > /dev/null 2>&1 & spinner "> wiping private user data (${username})"
 			done
 
 			# locate/mlocate
-			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & spinner "> clearing mlocate.db"
+			# @todo check how to deal with mlocate in general
+			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & spinner "> wiping mlocate.db"
 			;;
 		filesystem)
-			( cat /dev/zero > /tmp/zero.file ) > /dev/null 2>&1 & spinner "> clearing filesystem"
+			( cat /dev/zero > /tmp/zero.file ) > /dev/null 2>&1 & spinner "> wiping filesystem"
 
 			rm -rf /tmp/zero.file
 			;;
 		all)
-			clear kernel \
-			&& clear apt \
-			&& clear temp \
-			&& clear logs \
-			&& clear container \
-			&& clear images \
-			&& clear mounts \
-			&& clear ssh \
-			&& clear data \
-			&& clear filesystem
+			wipe kernel \
+			&& wipe apt \
+			&& wipe temp \
+			&& wipe logs \
+			&& wipe container \
+			&& wipe images \
+			&& wipe mounts \
+			&& wipe vmware \
+			&& wipe virtualbox \
+			&& wipe ssh \
+			&& wipe data \
+			&& wipe filesystem
 			;;
 		*)
-			error "> Usage: vdm clear {all|kernel|apt|temp|logs|container|images|mounts|ssh|data|filesystem}"
+			error "> Usage: vdm wipe {all|kernel|apt|temp|logs|container|images|mounts|ssh|data|filesystem}"
 			exit 1
 		;;
 	esac
@@ -348,6 +404,8 @@ clear()
 
 case "$1" in
 	install)
+		clear
+
 		configure interfaces \
 		&& update vdm \
 		&& update sources \
@@ -366,22 +424,27 @@ case "$1" in
 		&& configure runscript
 		;;
 	update)
+		clear
+
 		update vdm \
 		&& update sources \
 		&& update system
 		;;
 	clear)
-		clear kernel \
-		&& clear apt \
-		&& clear temp \
-		&& clear logs \
-		&& clear container \
-		&& clear images
+		clear
+
+		wipe kernel \
+		&& wipe apt \
+		&& wipe temp \
+		&& wipe logs \
+		&& wipe container \
+		&& wipe images
 		;;
 	build)
+
 		update sources \
 		&& update system \
-		&& clear all
+		&& wipe all
 
 		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down for export"
 		;;
@@ -425,20 +488,9 @@ case "$1" in
 
 				if [[ -z "$state" ]]
 				then
-					vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-					vbox_name="VBoxGuestAdditions_${vbox_version}"
-
-					(
-						( curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso ) \
-						&& ( mkdir -p /tmp/$vbox_name && mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name && /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force && rm -rf /opt/VBox* ) \
-						&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true ) \
-						&& ( umount -l /tmp/$vbox_name && rm -rf /tmp/* )
-					) > /dev/null 2>&1 & spinner "> installing VirtualBox Guest Additions"
+					install virtualbox
 				fi
 
-				#mounts=($(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d))
-
-				#for source in "${mounts[@]}"
 				for source in $(find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d)
 				do
 					target=${source/\/media\/sf_/\/shared\/}
@@ -449,11 +501,11 @@ case "$1" in
 		esac
 		;;
 	stop)
-		clear mounts \
-		&& clear container
+		wipe mounts \
+		&& wipe container
 		;;
 	*)
-		echo -e "Usage: vdm {install|update|clear|build}"
+		echo -e "Usage: vdm {install|update|wipe|build}"
 		exit 1
 		;;
 esac
