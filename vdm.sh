@@ -1,5 +1,6 @@
 #!/bin/bash
 
+VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
@@ -87,10 +88,10 @@ install()
 			&& update sources
 
 			(
-				apt-get remove lxc-docker --purge \
-				&& apt-get install linux-image-extra-$(uname -r) \
-				&& apt-get install docker-engine \
-				&& apt-get install docker-compose
+				apt-get remove -qy lxc-docker --purge \
+				&& apt-get install -qy linux-image-extra-$(uname -r) \
+				&& apt-get install -qy docker-engine \
+				&& apt-get install -qy docker-compose
 			) > /dev/null 2>&1 & spinner "> installing docker"
 			;;
 		vmware)
@@ -220,7 +221,8 @@ update()
 {
 	case "$1" in
 		vdm)
-			( curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh > /usr/sbin/vdm && chmod +x /usr/sbin/vdm ) > /dev/null 2>&1 & spinner "> updating vdm"
+			#( curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm ) > /dev/null 2>&1 & spinner "> updating vdm"
+			exec curl -s $VDM_URL > /usr/sbin/vdm && chmod +x /usr/sbin/vdm
 			;;
 		sources)
 			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
@@ -430,9 +432,9 @@ case "$1" in
 
 		notice "[VDM] update"
 
-		update vdm \
-		&& update sources \
-		&& update system
+		update sources \
+		&& update system \
+		&& update vdm
 		;;
 	wipe)
 		clear
