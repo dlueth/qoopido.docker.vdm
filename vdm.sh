@@ -89,9 +89,7 @@ install()
 
 			(
 				apt-get remove -qy lxc-docker --purge \
-				&& apt-get install -qy linux-image-extra-$(uname -r) \
-				&& apt-get install -qy docker-engine \
-				&& apt-get install -qy docker-compose
+				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
 			) > /dev/null 2>&1 & spinner "> installing docker"
 			;;
 		vmware)
@@ -101,19 +99,22 @@ install()
 			vbox_name="VBoxGuestAdditions_${vbox_version}"
 
 			(
-				curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
+				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
+				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
 				&& mkdir -p /tmp/$vbox_name \
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
-				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true )
+				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true ) \
+				&& umount -l /tmp/$vbox_name \
+				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
 			) > /dev/null 2>&1 & spinner "> installing virtualbox"
 
 			# cannot be combined with above due to VBoxLinuxAdditions.run exit status of 1 :(
-			(
-				umount -l /tmp/$vbox_name \
-				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
-			) > /dev/null 2>&1
+			#(
+			#	umount -l /tmp/$vbox_name \
+			#	&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
+			#) > /dev/null 2>&1
 			;;
 		*)
 			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
