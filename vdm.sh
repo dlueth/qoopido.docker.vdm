@@ -494,8 +494,8 @@ case "$1" in
 			virtualbox)
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
-					install virtualbox
-					sleep 2
+					install virtualbox \
+					wall -n "[VDM] finished installing VirtualBox Guest Additions, please reboot"
 				fi
 
 				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'createMount "$@"' bash {} \;
