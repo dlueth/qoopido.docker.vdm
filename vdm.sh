@@ -295,7 +295,7 @@ wipe()
 			) > /dev/null 2>&1 & spinner "> wiping logfiles"
 			;;
 		container)
-			echo "removing container" >> /var/log/vdm.log
+			( docker stop -t 600 $(docker ps -a -q -f status=running) ) > /dev/null 2>&1 & spinner "> stopping docker container"
 			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> wiping docker container"
 			;;
 		images)
@@ -489,7 +489,7 @@ case "$1" in
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
 					install virtualbox
-					sleep 5
+					sleep 2
 				fi
 
 				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'createMount "$@"' bash {} \;
@@ -497,8 +497,6 @@ case "$1" in
 		esac
 		;;
 	stop)
-		( docker stop -t 600 $(docker ps -a -q -f status=running) ) > /dev/null 2>&1
-
 		wipe mounts \
 		&& wipe container
 		;;
