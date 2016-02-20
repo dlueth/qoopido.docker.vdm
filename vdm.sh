@@ -456,7 +456,7 @@ case "$1" in
 		&& update system \
 		&& wipe all
 
-		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down for export"
+		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down"
 		;;
 	start)
 		# Generate SSH keys
