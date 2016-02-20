@@ -494,7 +494,7 @@ case "$1" in
 			virtualbox)
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
-					install virtualbox \
+					install virtualbox
 					wall -n "[VDM] finished installing VirtualBox Guest Additions, please reboot"
 				fi
 
