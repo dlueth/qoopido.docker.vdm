@@ -115,11 +115,14 @@ install()
 		vmware)
         	(
         		rm -rf /tmp/VMWareToolsPatches \
+        		&& apt-get install -qy zip \
         		&& git clone https://github.com/rasa/vmware-tools-patches.git /tmp/VMWareToolsPatches \
-        		&& . /tmp/VMWareToolsPatches/setup.sh \
-        		&& /tmp/VMWareToolsPatches/download-tools.sh latest \
-        		&& /tmp/VMWareToolsPatches/untar-and-patch.sh \
-        		&& /tmp/VMWareToolsPatches/compile.sh \
+        		&& cd /tmp/VMWareToolsPatches \
+        		&& . ./setup.sh \
+        		&& ./download-tools.sh latest \
+        		&& ./untar-and-patch.sh \
+        		&& ./compile.sh \
+        		&& cd .. \
         		&& rm -rf /tmp/VMWareToolsPatches
         	) > /dev/null 2>&1 & spinner "> installing vmware"
 			;;
@@ -326,12 +329,14 @@ wipe()
 					( /usr/bin/vmware-uninstall-tools.pl ) > /dev/null 2>&1
 				fi
 
-				# @todo check for more specific paths
 				# cleanup
-				# find / -name "vmware*" -type f -exec rm -rf {} \; \
-				# && find / -name "*open-vm-*" -exec rm -rf {} \; \
-				# && find / -name "vmware*" -type d -exec rm -rf {} \;
-			)
+				rm -rf /vmware* \
+				&& find /tmp -iname "vmware*" -exec rm -rf {} \; \
+				&& find /etc -iname "vmware*" -exec rm -rf {} \; \
+				&& find /usr -iname "vmware*" -exec rm -rf {} \; \
+				&& find /var -iname "vmware*" -exec rm -rf {} \; \
+				&& find /run -iname "vmware*" -exec rm -rf {} \;
+			) > /dev/null 2>&1 & spinner "> wiping vmware"
 			;;
 		virtualbox)
 			(
@@ -507,7 +512,7 @@ case "$1" in
 			vmware)
 				if [[ -z $(ps faux | grep -P '(vmware|vmtoolsd)' | grep -v grep | sed -n 1p) ]]
 				then
-					install vmware
+					update sources && install vmware
 				fi
 
 				ln -sf /mnt/hgfs /vdm
@@ -515,7 +520,7 @@ case "$1" in
 			virtualbox)
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
-					install virtualbox
+					update sources && install virtualbox
 					wall -n "[VDM] finished installing VirtualBox Guest Additions, please reboot"
 				fi
 
