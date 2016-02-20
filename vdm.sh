@@ -112,6 +112,14 @@ install()
 			) > /dev/null 2>&1 & spinner "> installing docker"
 			;;
 		vmware)
+        	(
+        		git clone https://github.com/rasa/vmware-tools-patches.git /tmp/VMWareToolsPatches \
+        		&& . /tmp/VMWareToolsPatches/setup.sh \
+        		&& /tmp/VMWareToolsPatches/download-tools.sh latest \
+        		&& /tmp/VMWareToolsPatches/untar-and-patch.sh \
+        		&& /tmp/VMWareToolsPatches/compile.sh \
+        		&& rm -rf /tmp/VMWareToolsPatches
+        	) > /dev/null 2>&1 & spinner "> installing vmware"
 			;;
 		virtualbox)
 			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
@@ -310,6 +318,18 @@ wipe()
 			) > /dev/null 2>&1 & spinner "> wiping mount points"
 			;;
 		vmware)
+			(
+				if [ -f "/usr/bin/vmware-uninstall-tools.pl" ]
+				then
+					( /usr/bin/vmware-uninstall-tools.pl ) > /dev/null 2>&1
+				fi
+
+				# @todo check for more specific paths
+				# cleanup
+				# find / -name "vmware*" -type f -exec rm -rf {} \; \
+				# && find / -name "*open-vm-*" -exec rm -rf {} \; \
+				# && find / -name "vmware*" -type d -exec rm -rf {} \;
+			)
 			;;
 		virtualbox)
 			(
@@ -483,6 +503,12 @@ case "$1" in
 
 		case $(virt-what | sed -n 1p) in
 			vmware)
+				if [[ -z $(ps faux | grep -P '(vmware|vmtoolsd)' | grep -v grep | sed -n 1p) ]]
+				then
+					install vmware
+					wall -n "[VDM] finished installing VMWare Tools, please reboot"
+				fi
+
 				ln -sf /mnt/hgfs /vdm
 				;;
 			virtualbox)
