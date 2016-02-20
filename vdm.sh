@@ -114,7 +114,8 @@ install()
 			;;
 		vmware)
         	(
-        		git clone https://github.com/rasa/vmware-tools-patches.git /tmp/VMWareToolsPatches \
+        		rm -rf /tmp/VMWareToolsPatches \
+        		&& git clone https://github.com/rasa/vmware-tools-patches.git /tmp/VMWareToolsPatches \
         		&& . /tmp/VMWareToolsPatches/setup.sh \
         		&& /tmp/VMWareToolsPatches/download-tools.sh latest \
         		&& /tmp/VMWareToolsPatches/untar-and-patch.sh \
@@ -507,7 +508,6 @@ case "$1" in
 				if [[ -z $(ps faux | grep -P '(vmware|vmtoolsd)' | grep -v grep | sed -n 1p) ]]
 				then
 					install vmware
-					wall -n "[VDM] finished installing VMWare Tools, please reboot"
 				fi
 
 				ln -sf /mnt/hgfs /vdm
