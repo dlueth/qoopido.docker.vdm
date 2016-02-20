@@ -60,6 +60,7 @@ notice "[VDM] installer"
 
 (
 	curl -s $VDM_URL > /usr/sbin/vdm \
-	&& chmod +x /usr/sbin/vdm \
-	&& /usr/sbin/vdm install
+	&& chmod +x /usr/sbin/vdm
+
+	exec /usr/sbin/vdm install
 )  > /dev/null 2>&1 & spinner "> downloading vdm"
