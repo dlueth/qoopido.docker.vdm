@@ -59,9 +59,15 @@ createMount()
 	ln -sf $1 $target
 }
 
+removeFile()
+{
+	removeMount $1
+}
+
 export DEBIAN_FRONTEND=noninteractive
 export -f removeMount
 export -f createMount
+export -f removeFile
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
