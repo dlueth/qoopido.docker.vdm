@@ -166,6 +166,10 @@ configure()
 						echo "iface ${interface} inet dhcp" >> /etc/network/interfaces
 					fi
 				done
+
+				# restart interfaces
+				ifdown --exclude=lo -a \
+				&& ifup --exclude=lo -a
 			) > /dev/null 2>&1 & spinner "> configuring interfaces"
 			;;
 		localepurge)
@@ -437,7 +441,7 @@ case "$1" in
 		do
 			username=$(echo "${userdir}" | cut -sd / -f 3-)
 
-			adduser -q $username vboxsf
+			adduser -q $username vboxsf > /dev/null 2>&1
 		done
 
 		configure interfaces \
