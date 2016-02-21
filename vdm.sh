@@ -137,7 +137,9 @@ install()
 			) > /dev/null 2>&1 & showSpinner "> installing docker"
 			;;
 		vmware)
-			getTempDir target vmware
+			local target
+
+			getTempDir target "vmware"
 
         	(
         		rm -rf /tmp/VMWareToolsPatches \
@@ -155,8 +157,8 @@ install()
 			local target_dir
 			local target_file
 
-			getTempDir target_dir virtualbox
-			getTempFile target_file virtualbox
+			getTempDir target_dir "virtualbox"
+			getTempFile target_file "virtualbox"
 
 			(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
@@ -179,28 +181,35 @@ configure()
 	case "$1" in
 		interfaces)
 			(
+				local interface
+
 				for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
 				do
-					state=$(grep $interface /etc/network/interfaces)
+					local state=$(grep $interface /etc/network/interfaces)
 
 					if [[ -z "$state" ]]
 					then
-						echo "" >> /etc/network/interfaces
-						echo "auto ${interface}" >> /etc/network/interfaces
-						echo "iface ${interface} inet dhcp" >> /etc/network/interfaces
+						local file="/etc/network/interfaces"
+
+						echo "" >> $file
+						echo "auto ${interface}" >> $file
+						echo "iface ${interface} inet dhcp" >> $file
+
+						ifdown $interface && ifup $interface
 					fi
 				done
 
+				# @todo check if single interface down & up above work
 				# restart interfaces
-				ifdown --exclude=lo -a \
-				&& ifup --exclude=lo -a
+				# ifdown --exclude=lo -a \
+				# && ifup --exclude=lo -a
 			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 			;;
 		localepurge)
 			(
 				if grep -qs NEEDSCONFIGFIRST /etc/locale.nopurge
 				then
-					locale=$(locale | grep LANG= | cut -d= -f2)
+					local locale=$(locale | grep LANG= | cut -d= -f2)
 
 					echo "${locale}" >> /etc/locale.nopurge
 					sed -i -- 's/NEEDSCONFIGFIRST//g' /etc/locale.nopurge
@@ -209,8 +218,9 @@ configure()
 			;;
 		grub)
 			(
-				file="/etc/default/grub" \
-				&& grep -q '^GRUB_HIDDEN_TIMEOUT_QUIET=' $file && sed -i 's/^GRUB_HIDDEN_TIMEOUT_QUIET=.*/GRUB_HIDDEN_TIMEOUT_QUIET=true/' $file || echo 'GRUB_HIDDEN_TIMEOUT_QUIET=true' >> $file \
+				local file="/etc/default/grub"
+
+				grep -q '^GRUB_HIDDEN_TIMEOUT_QUIET=' $file && sed -i 's/^GRUB_HIDDEN_TIMEOUT_QUIET=.*/GRUB_HIDDEN_TIMEOUT_QUIET=true/' $file || echo 'GRUB_HIDDEN_TIMEOUT_QUIET=true' >> $file \
 				&& grep -q '^GRUB_TIMEOUT=' $file && sed -i 's/^GRUB_TIMEOUT=.*/GRUB_TIMEOUT=0/' $file || echo 'GRUB_TIMEOUT=0' >> $file \
 				&& grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' $file && sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/' $file || echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"' >> $file \
 				&& grep -q '^GRUB_CMDLINE_LINUX=' $file && sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"/' $file || echo 'GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"' >> $file \
@@ -221,7 +231,7 @@ configure()
 			(
 				if [ ! -f "/etc/gitconfig" ]
 				then
-					file="/etc/gitconfig"
+					local file="/etc/gitconfig"
 
 					cat /dev/null > $file
 					echo "[pack]" >> $file
@@ -248,7 +258,7 @@ configure()
 			;;
 		aliases)
 			(
-				file="/etc/profile.d/vdm.sh"
+				local file="/etc/profile.d/vdm.sh"
 
 				cat /dev/null > $file
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
@@ -257,7 +267,7 @@ configure()
 			;;
 		runscript)
 			(
-				file="/lib/systemd/system/vdm.service"
+				local file="/lib/systemd/system/vdm.service"
 
 				cat /dev/null > $file
 				echo "[Unit]" >> $file
@@ -360,23 +370,25 @@ wipe()
 			;;
 		virtualbox)
 			(
-				# uninstall
-				vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-				vbox_name="VBoxGuestAdditions_${vbox_version}"
+				local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+				local target_dir
+				local target_file
 
-				saveRemove /tmp/$vbox_name \
-				&& rm -rf /tmp/$vbox_name.iso \
-				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
-				&& mkdir -p /tmp/$vbox_name \
-				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
-				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force
+				getTempDir target_dir "virtualbox"
+				getTempFile target_file "virtualbox"
 
-				# cleanup
-				umount -l /tmp/$vbox_name \
-				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name /opt/VBox* \
-				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
-				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
-				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
+				(
+					apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
+					&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
+					&& mount -o loop,ro $target_file $target_dir \
+					&& $target_dir/VBoxLinuxAdditions.run uninstall --force
+
+					# cleanup
+					rm -rf /opt/VBox* \
+					&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
+					&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
+					&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
+				) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
 			) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
 			;;
 		ssh)
@@ -393,9 +405,11 @@ wipe()
 			) > /dev/null 2>&1 & showSpinner "> wiping private user data (root)"
 
 			# other user
+			local userdir
+
 			for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
 			do
-				username=$(echo "${userdir}" | cut -sd / -f 3-)
+				local username=$(echo "${userdir}" | cut -sd / -f 3-)
 
 				(
 					su -l $username -c 'history -cw' \
@@ -410,9 +424,11 @@ wipe()
 			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & showSpinner "> wiping mlocate.db"
 			;;
 		filesystem)
-			( cat /dev/zero > /tmp/zero.file ) > /dev/null 2>&1 & showSpinner "> wiping filesystem"
+			local target
 
-			rm -rf /tmp/zero.file
+			getTempFile target "wipe"
+
+			( cat /dev/zero > $target ) > /dev/null 2>&1 & showSpinner "> wiping filesystem"
 			;;
 		all)
 			wipe kernel \
@@ -452,7 +468,7 @@ case "$1" in
 				do
 					username=$(echo "${userdir}" | cut -sd / -f 3-)
 
-					adduser -q $username vboxsf > /dev/null 2>&1
+					( adduser -q $username vboxsf ) > /dev/null 2>&1
 				done
 
 				configure interfaces \
