@@ -181,7 +181,10 @@ configure()
 	case "$1" in
 		interfaces)
 			(
+				local file="/etc/network/interfaces.d/vdm"
 				local interface
+
+				cat /dev/null > $file
 
 				for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
 				do
@@ -189,11 +192,9 @@ configure()
 
 					if [[ -z "$state" ]]
 					then
-						local file="/etc/network/interfaces"
-
-						echo "" >> $file
 						echo "auto ${interface}" >> $file
 						echo "iface ${interface} inet dhcp" >> $file
+						echo "" >> $file
 
 						ifdown $interface && ifup $interface
 					fi

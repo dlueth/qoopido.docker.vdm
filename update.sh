@@ -7,12 +7,12 @@ DISTRO_VERSION=$(lsb_release -rs)
 COLOR_ERROR='\e[91m'
 COLOR_NONE='\e[39m'
 
-error()
+logError()
 {
 	echo -e "${COLOR_ERROR}$1${COLOR_NONE}" > /dev/stderr
 }
 
-spinner()
+showSpinner()
 {
     local pid=$!
     local delay=0.75
@@ -33,19 +33,19 @@ spinner()
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
-	error "This script targets Ubuntu 15.10 specifically!"
+	logError "This script targets Ubuntu 15.10 specifically!"
 	exit 1
 fi
 
 if [ ! $(whoami) = 'root' ];
 then
-	error "This script may only be run as root!"
+	logError "This script may only be run as root!"
 	exit 1
 fi
 
 if [ $(systemctl is-active vdm.service) = 'unknown' ];
 then
-	error "You need to have VDM installed!"
+	logError "You need to have VDM installed!"
 	exit 1
 fi
 
@@ -53,4 +53,4 @@ fi
 	curl -s $VDM_URL > /usr/sbin/vdm \
 	&& chmod +x /usr/sbin/vdm \
 	&& systemctl restart vdm.service
-)  > /dev/null 2>&1 & spinner "> updating vdm"
+)  > /dev/null 2>&1 & showSpinner "> updating vdm"

@@ -8,17 +8,17 @@ COLOR_NOTICE='\e[95m'
 COLOR_ERROR='\e[91m'
 COLOR_NONE='\e[39m'
 
-notice()
+logNotice()
 {
 	echo -e "${COLOR_NOTICE}$1${COLOR_NONE}" > /dev/stdout
 }
 
-error()
+logError()
 {
 	echo -e "${COLOR_ERROR}$1${COLOR_NONE}" > /dev/stderr
 }
 
-spinner()
+showSpinner()
 {
     local pid=$!
     local delay=0.75
@@ -39,27 +39,27 @@ spinner()
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
-	error "This script targets Ubuntu 15.10 specifically!"
+	logErrror "This script targets Ubuntu 15.10 specifically!"
 	exit 1
 fi
 
 if [ ! $(whoami) = 'root' ];
 then
-	error "This script may only be run as root!"
+	logErrror "This script may only be run as root!"
 	exit 1
 fi
 
 if [ ! $(systemctl is-active vdm.service) = 'unknown' ];
 then
-	error "VDM is already installed!"
+	logErrror "VDM is already installed!"
 	exit 1
 fi
 
-notice "[VDM] installer"
+logNotice "[VDM] installer"
 
 (
 	curl -s $VDM_URL > /usr/sbin/vdm \
 	&& chmod +x /usr/sbin/vdm
-)  > /dev/null 2>&1 & spinner "> downloading vdm"
+)  > /dev/null 2>&1 & showSpinner "> downloading vdm"
 
 exec /usr/sbin/vdm install
