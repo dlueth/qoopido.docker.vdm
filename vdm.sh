@@ -65,8 +65,7 @@ export DEBIAN_FRONTEND=noninteractive
 export -f removeMount
 export -f createMount
 
-# || [ ! $DISTRO_VERSION = '15.10' ]
-if [ ! $DISTRO_NAME = 'Ubuntu' ];
+if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
 	error "This script targets Ubuntu 15.10 specifically!"
 	exit 1
