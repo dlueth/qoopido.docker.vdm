@@ -39,19 +39,19 @@ showSpinner()
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
-	logErrror "This script targets Ubuntu 15.10 specifically!"
+	logError "This script targets Ubuntu 15.10 specifically!"
 	exit 1
 fi
 
 if [ ! $(whoami) = 'root' ];
 then
-	logErrror "This script may only be run as root!"
+	logError "This script may only be run as root!"
 	exit 1
 fi
 
 if [ ! $(systemctl is-active vdm.service) = 'unknown' ];
 then
-	logErrror "VDM is already installed!"
+	logError "VDM is already installed!"
 	exit 1
 fi
 
