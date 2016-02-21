@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# @todo check removal of networks on build and re-apply via service
+
 VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
@@ -353,7 +355,9 @@ wipe()
 				vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
 				vbox_name="VBoxGuestAdditions_${vbox_version}"
 
-				curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
+				removeMount /tmp/$vbox_name \
+				&& rm -rf /tmp/$vbox_name.iso \
+				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
 				&& mkdir -p /tmp/$vbox_name \
 				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
 				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force
