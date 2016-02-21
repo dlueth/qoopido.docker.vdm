@@ -217,6 +217,15 @@ configure()
 				fi
 			) > /dev/null 2>&1 & spinner "> configuring docker"
 			;;
+		aliases)
+			(
+				file="/etc/profile.d/vdm.sh"
+
+				cat /dev/null > $file
+				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
+				echo "alias down='docker-compose stop --timeout 600';" >> $file
+			) > /dev/null 2>&1 & spinner "> configuring aliases"
+			;;
 		runscript)
 			(
 				file="/lib/systemd/system/vdm.service"
@@ -237,7 +246,7 @@ configure()
 			) > /dev/null 2>&1 & spinner "> configuring runscript"
 			;;
 		*)
-			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|runscript}"
+			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|aliases|runscript}"
 			exit 1
 			;;
 	esac
@@ -444,6 +453,7 @@ case "$1" in
 		&& install git \
 		&& install virt-what \
 		&& install docker \
+		&& configure aliases \
 		&& configure runscript
 		;;
 	update)
