@@ -1,10 +1,11 @@
 #!/bin/bash
 
+# @todo check logging options
 # @todo check removal of networks on build and re-apply via service
 
 VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
-VDM_LOG="/var/log/vdm.log"
-VDM_LOG_ERROR="/var/log/vdm.error.log"
+# VDM_LOG="/var/log/vdm.log"
+# VDM_LOG_ERROR="/var/log/vdm.error.log"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
@@ -13,22 +14,22 @@ COLOR_ERROR='\e[91m'
 COLOR_NONE='\e[39m'
 TEMP_FILES=( )
 
-log()
+logDefault()
 {
 	echo -e "$1" > /dev/stdout
 }
 
-notice()
+logNotice()
 {
 	echo -e "${COLOR_NOTICE}$1${COLOR_NONE}" > /dev/stdout
 }
 
-error()
+logError()
 {
 	echo -e "${COLOR_ERROR}$1${COLOR_NONE}" > /dev/stderr
 }
 
-spinner()
+showSpinner()
 {
     local pid=$!
     local delay=0.75
@@ -47,7 +48,7 @@ spinner()
     echo -ne "\b\b\b\n"
 }
 
-remove()
+saveRemove()
 {
         if grep -qs $1 /proc/mounts;
         then
@@ -57,50 +58,45 @@ remove()
         fi
 }
 
-create()
+getTempFile()
 {
-	target=${1/\/media\/sf_/\/vdm\/}
+        local path=$(mktemp -t vdm.$2.XXXXXXXX)
 
-	ln -sf $1 $target
+        TEMP_FILES+=($path)
+
+        eval $1=$path
 }
 
-tempFile()
+getTempDir()
 {
-	local path=$(mktemp -t vdm.$1.XXXXXXXX)
-	TEMP_FILES+=($path)
+        local path=$(mktemp -d -t vdm.$2.XXXXXXXX)
 
-	echo "$path"
+        TEMP_FILES+=($path)
+
+        eval $1=$path
 }
 
-tempDir()
-{
-	local path=$(mktemp -d -t vdm.$1.XXXXXXXX)
-	TEMP_FILES+=($path)
-
-	echo "$path"
-}
-
-cleanup() {
-	for file in "${TEMP_FILES[@]}"
-	do
-		remove $file
-	done
+wipeTemp() {
+        for file in "${TEMP_FILES[@]}"
+        do
+                saveRemove $file
+        done
 }
 
 export DEBIAN_FRONTEND=noninteractive
-export -f remove
-export -f create
-trap cleanup INT TERM EXIT
+export -f saveRemove
+
+trap wipeTemp INT TERM EXIT
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
-	error "This script targets Ubuntu 15.10 specifically!"
+	logError "This script targets Ubuntu 15.10 specifically!"
 	exit 1
 fi
 
 if [ ! $(whoami) = 'root' ];
 then
-	error "This script may only be run as root!"
+	logError "This script may only be run as root!"
 	exit 1
 fi
 
@@ -108,28 +104,28 @@ install()
 {
 	case "$1" in
 		localepurge)
-			( apt-get install -qy localepurge && configure localepurge ) > /dev/null 2>&1 & spinner "> installing localepurge"
+			( apt-get install -qy localepurge && configure localepurge ) > /dev/null 2>&1 & showSpinner "> installing localepurge"
 			;;
 		gcc)
-			( apt-get install -qy gcc ) > /dev/null 2>&1 & spinner "> installing gcc"
+			( apt-get install -qy gcc ) > /dev/null 2>&1 & showSpinner "> installing gcc"
 			;;
 		build-essential)
-			( apt-get install -qy build-essential ) > /dev/null 2>&1 & spinner "> installing build-essential"
+			( apt-get install -qy build-essential ) > /dev/null 2>&1 & showSpinner "> installing build-essential"
 			;;
 		linux-headers-generic)
-			( apt-get install -qy linux-headers-generic ) > /dev/null 2>&1 & spinner "> installing linux-headers-generic"
+			( apt-get install -qy linux-headers-generic ) > /dev/null 2>&1 & showSpinner "> installing linux-headers-generic"
 			;;
 		openssh-server)
-			( apt-get install -qy openssh-server ) > /dev/null 2>&1 & spinner "> installing openssh-server"
+			( apt-get install -qy openssh-server ) > /dev/null 2>&1 & showSpinner "> installing openssh-server"
 			;;
 		deborphan)
-			( apt-get install -qy deborphan ) > /dev/null 2>&1 & spinner "> installing deborphan"
+			( apt-get install -qy deborphan ) > /dev/null 2>&1 & showSpinner "> installing deborphan"
 			;;
 		git)
-			( apt-get install -qy git && configure git ) > /dev/null 2>&1 & spinner "> installing git"
+			( apt-get install -qy git && configure git ) > /dev/null 2>&1 & showSpinner "> installing git"
 			;;
 		virt-what)
-			( apt-get install -qy virt-what ) > /dev/null 2>&1 & spinner "> installing virt-what"
+			( apt-get install -qy virt-what ) > /dev/null 2>&1 & showSpinner "> installing virt-what"
 			;;
 		docker)
 			configure docker \
@@ -138,10 +134,10 @@ install()
 			(
 				apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
-			) > /dev/null 2>&1 & spinner "> installing docker"
+			) > /dev/null 2>&1 & showSpinner "> installing docker"
 			;;
 		vmware)
-			target=$(tempDir vmware)
+			getTempDir target vmware
 
         	(
         		rm -rf /tmp/VMWareToolsPatches \
@@ -152,12 +148,15 @@ install()
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
         		&& ./compile.sh
-        	) > /dev/null 2>&1 & spinner "> installing vmware"
+        	) > /dev/null 2>&1 & showSpinner "> installing vmware"
 			;;
 		virtualbox)
-			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-			target_dir=$(tempDir virtualbox)
-			target_file=$(tempFile virtualbox)
+			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+			local target_dir
+			local target_file
+
+			getTempDir target_dir virtualbox
+			getTempFile target_file virtualbox
 
 			(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
@@ -166,10 +165,10 @@ install()
 				&& $target_dir/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
-			) > /dev/null 2>&1 & spinner "> installing virtualbox"
+			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 			;;
 		*)
-			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
+			logError "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
 			exit 1
 		;;
 	esac
@@ -195,7 +194,7 @@ configure()
 				# restart interfaces
 				ifdown --exclude=lo -a \
 				&& ifup --exclude=lo -a
-			) > /dev/null 2>&1 & spinner "> configuring interfaces"
+			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 			;;
 		localepurge)
 			(
@@ -206,7 +205,7 @@ configure()
 					echo "${locale}" >> /etc/locale.nopurge
 					sed -i -- 's/NEEDSCONFIGFIRST//g' /etc/locale.nopurge
 				fi
-			) > /dev/null 2>&1 & spinner "> configuring localepurge"
+			) > /dev/null 2>&1 & showSpinner "> configuring localepurge"
 			;;
 		grub)
 			(
@@ -216,7 +215,7 @@ configure()
 				&& grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' $file && sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/' $file || echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"' >> $file \
 				&& grep -q '^GRUB_CMDLINE_LINUX=' $file && sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"/' $file || echo 'GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"' >> $file \
 				&& update-grub
-			) > /dev/null 2>&1 & spinner "> configuring grub"
+			) > /dev/null 2>&1 & showSpinner "> configuring grub"
 			;;
 		git)
 			(
@@ -234,7 +233,7 @@ configure()
 					echo "packedGitLimit = 128m" >> $file
 					echo "packedGitWindowSize = 128m" >> $file
 				fi
-			) > /dev/null 2>&1 & spinner "> configuring git"
+			) > /dev/null 2>&1 & showSpinner "> configuring git"
 			;;
 		docker)
 			(
@@ -245,7 +244,7 @@ configure()
 				then
 					echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > /etc/apt/sources.list.d/docker.list
 				fi
-			) > /dev/null 2>&1 & spinner "> configuring docker"
+			) > /dev/null 2>&1 & showSpinner "> configuring docker"
 			;;
 		aliases)
 			(
@@ -254,7 +253,7 @@ configure()
 				cat /dev/null > $file
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
 				echo "alias down='docker-compose stop --timeout 600';" >> $file
-			) > /dev/null 2>&1 & spinner "> configuring aliases"
+			) > /dev/null 2>&1 & showSpinner "> configuring aliases"
 			;;
 		runscript)
 			(
@@ -273,10 +272,10 @@ configure()
 
 				systemctl enable vdm.service
 				systemctl restart vdm.service
-			) > /dev/null 2>&1 & spinner "> configuring runscript"
+			) > /dev/null 2>&1 & showSpinner "> configuring runscript"
 			;;
 		*)
-			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|aliases|runscript}"
+			logError "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|aliases|runscript}"
 			exit 1
 			;;
 	esac
@@ -286,19 +285,19 @@ update()
 {
 	case "$1" in
 		sources)
-			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
+			( apt-get update -qy ) > /dev/null 2>&1 & showSpinner "> updating sources"
 			;;
 		system)
 			(
 				apt-get -qy upgrade \
 				&& apt-get -qy dist-upgrade
-			) > /dev/null 2>&1 & spinner "> updating system"
+			) > /dev/null 2>&1 & showSpinner "> updating system"
 			;;
 		vdm)
 			exec bash <(curl -s $VDM_URL_UPDATE)
 			;;
 		*)
-			error "> Usage: vdm update {sources|system|vdm}"
+			logError "> Usage: vdm update {sources|system|vdm}"
 			exit 1
 		;;
 	esac
@@ -308,13 +307,13 @@ wipe()
 {
 	case "$1" in
 		kernel)
-			( dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge ) > /dev/null 2>&1 & spinner "> wiping unused kernel"
+			( dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge ) > /dev/null 2>&1 & showSpinner "> wiping unused kernel"
 			;;
 		apt)
-			( apt-get -qy clean && apt-get -qy autoclean && apt-get -qy autoremove --purge && deborphan | xargs apt-get -qy remove --purge ) > /dev/null 2>&1 & spinner "> wiping apt leftovers"
+			( apt-get -qy clean && apt-get -qy autoclean && apt-get -qy autoremove --purge && deborphan | xargs apt-get -qy remove --purge ) > /dev/null 2>&1 & showSpinner "> wiping apt leftovers"
 			;;
 		temp)
-			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & spinner "> wiping temporary directories"
+			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & showSpinner "> wiping temporary directories"
 			;;
 		logs)
 			(
@@ -326,50 +325,22 @@ wipe()
 				then
 					find /var/log/samba -type f -exec rm -rf {} \;
 				fi
-
-
-				# remove .gz files
-				#for file in $(find /var/log -type f -regex ".*\.gz$")
-				#do
-				#	rm -rf $file
-				#done
-
-				# remove rotated logfiles
-				#for file in $(find /var/log -type f -regex ".*\.[0-9]$")
-				#do
-				#	rm -rf $file
-				#done
-
-				# remove samba logs (might leak ip-adresses)
-				#if [ -d "/var/log/samba" ]
-				#then
-				#	for file in $(find /var/log/samba -type f)
-				#	do
-				#		rm -rf $file
-				#	done
-				#fi
-
-				# empty remaining
-				#for file in $(find /var/log -type f)
-				#do
-				#	cp /dev/null $file
-				#done
-			) > /dev/null 2>&1 & spinner "> wiping logfiles"
+			) > /dev/null 2>&1 & showSpinner "> wiping logfiles"
 			;;
 		container)
-			( docker stop -t 600 $(docker ps -a -q -f status=running) ) > /dev/null 2>&1 & spinner "> stopping docker container"
-			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> wiping docker container"
+			( docker stop -t 600 $(docker ps -a -q -f status=running) ) > /dev/null 2>&1 & showSpinner "> stopping docker container"
+			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & showSpinner "> wiping docker container"
 			;;
 		images)
-			( docker rmi $(docker images -q) ) > /dev/null 2>&1 & spinner "> wiping docker images"
+			( docker rmi $(docker images -q) ) > /dev/null 2>&1 & showSpinner "> wiping docker images"
 			;;
 		mounts)
 			(
 				rm -rf /vdm
 
-				remove "/mnt/hgfs"
-				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'remove "$@"' bash {} \;
-			) > /dev/null 2>&1 & spinner "> wiping mount points"
+				saveRemove "/mnt/hgfs"
+				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'saveRemove "$@"' bash {} \;
+			) > /dev/null 2>&1 & showSpinner "> wiping mount points"
 			;;
 		vmware)
 			(
@@ -385,7 +356,7 @@ wipe()
 				&& find /usr -iname "vmware*" -exec rm -rf {} \; \
 				&& find /var -iname "vmware*" -exec rm -rf {} \; \
 				&& find /run -iname "vmware*" -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> wiping vmware"
+			) > /dev/null 2>&1 & showSpinner "> wiping vmware"
 			;;
 		virtualbox)
 			(
@@ -393,7 +364,7 @@ wipe()
 				vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
 				vbox_name="VBoxGuestAdditions_${vbox_version}"
 
-				remove /tmp/$vbox_name \
+				saveRemove /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
 				&& mkdir -p /tmp/$vbox_name \
@@ -406,10 +377,10 @@ wipe()
 				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
 				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
 				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> wiping virtualbox"
+			) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
 			;;
 		ssh)
-			( rm -rf /etc/ssh/ssh_host_* ) > /dev/null 2>&1 & spinner "> wiping ssh keys"
+			( rm -rf /etc/ssh/ssh_host_* ) > /dev/null 2>&1 & showSpinner "> wiping ssh keys"
 			;;
 		data)
 			# root user
@@ -419,7 +390,7 @@ wipe()
 				&& find ~/ -name ".ssh" -type d -exec rm -rf {} \; \
 				&& find ~/ -name ".docker" -type d -exec rm -rf {} \; \
 				&& find ~/ -name ".nano_history" -type f -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> wiping private user data (root)"
+			) > /dev/null 2>&1 & showSpinner "> wiping private user data (root)"
 
 			# other user
 			for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
@@ -432,14 +403,14 @@ wipe()
 					&& find $userdir -name ".ssh" -type d -exec rm -rf {} \; \
 					&& find $userdir -name ".docker" -type d -exec rm -rf {} \; \
 					&& find $userdir -name ".nano_history" -type f -exec rm -rf {} \;
-				) > /dev/null 2>&1 & spinner "> wiping private user data (${username})"
+				) > /dev/null 2>&1 & showSpinner "> wiping private user data (${username})"
 			done
 
 			# locate/mlocate
-			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & spinner "> wiping mlocate.db"
+			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & showSpinner "> wiping mlocate.db"
 			;;
 		filesystem)
-			( cat /dev/zero > /tmp/zero.file ) > /dev/null 2>&1 & spinner "> wiping filesystem"
+			( cat /dev/zero > /tmp/zero.file ) > /dev/null 2>&1 & showSpinner "> wiping filesystem"
 
 			rm -rf /tmp/zero.file
 			;;
@@ -458,7 +429,7 @@ wipe()
 			&& wipe filesystem
 			;;
 		*)
-			error "> Usage: vdm wipe {all|kernel|apt|temp|logs|container|images|mounts|vmware|virtualbox|ssh|data|filesystem}"
+			logError "> Usage: vdm wipe {all|kernel|apt|temp|logs|container|images|mounts|vmware|virtualbox|ssh|data|filesystem}"
 			exit 1
 		;;
 	esac
@@ -473,7 +444,7 @@ case "$1" in
 			*)
 				clear
 
-				notice "[VDM] install"
+				logNotice "[VDM] install"
 
 				addgroup vboxsf > /dev/null 2>&1
 
@@ -508,7 +479,7 @@ case "$1" in
 	update)
 		clear
 
-		notice "[VDM] update"
+		logNotice "[VDM] update"
 
 		update sources \
 		&& update system
@@ -518,7 +489,7 @@ case "$1" in
 	wipe)
 		clear
 
-		notice "[VDM] wipe"
+		logNotice "[VDM] wipe"
 
 		wipe kernel \
 		&& wipe apt \
@@ -530,13 +501,13 @@ case "$1" in
 	build)
 		clear
 
-		notice "[VDM] build"
+		logNotice "[VDM] build"
 
 		update sources \
 		&& update system \
 		&& wipe all
 
-		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down"
+		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & showSpinner "> shutting down"
 		;;
 	start)
 		# Generate SSH keys
@@ -577,12 +548,21 @@ case "$1" in
 				ln -sf /mnt/hgfs /vdm
 				;;
 			virtualbox)
+				symlinkVirtualboxMount()
+				{
+					target=${1/\/media\/sf_/\/vdm\/}
+
+					ln -sf $1 $target
+				}
+
+				export -f symlinkVirtualboxMount
+
 				if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 				then
 					update sources && install virtualbox
 				fi
 
-				sleep 5 && find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'create "$@"' bash {} \;
+				sleep 5 && find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
 				;;
 		esac
 		;;
