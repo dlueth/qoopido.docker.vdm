@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/vdm.sh"
 DISTRO_NAME=$(lsb_release -is)

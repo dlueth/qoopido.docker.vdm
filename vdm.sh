@@ -1,8 +1,9 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # @todo check removal of networks on build and re-apply via service
 
 VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
+VDM_LOG="/var/log/vdm.log"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
