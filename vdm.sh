@@ -4,6 +4,7 @@
 
 VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
 VDM_LOG="/var/log/vdm.log"
+VDM_LOG_ERROR="/var/log/vdm.error.log"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
@@ -82,28 +83,29 @@ install()
 {
 	case "$1" in
 		localepurge)
-			( apt-get install -qy localepurge && configure localepurge ) > /dev/null 2>&1 & spinner "> installing localepurge"
+			# ( apt-get install -qy localepurge && configure localepurge ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing localepurge"
+			( apt-get install -qy localepurge && configure localepurge ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing localepurge"
 			;;
 		gcc)
-			( apt-get install -qy gcc ) > /dev/null 2>&1 & spinner "> installing gcc"
+			( apt-get install -qy gcc ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing gcc"
 			;;
 		build-essential)
-			( apt-get install -qy build-essential ) > /dev/null 2>&1 & spinner "> installing build-essential"
+			( apt-get install -qy build-essential ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing build-essential"
 			;;
 		linux-headers-generic)
-			( apt-get install -qy linux-headers-generic ) > /dev/null 2>&1 & spinner "> installing linux-headers-generic"
+			( apt-get install -qy linux-headers-generic ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing linux-headers-generic"
 			;;
 		openssh-server)
-			( apt-get install -qy openssh-server ) > /dev/null 2>&1 & spinner "> installing openssh-server"
+			( apt-get install -qy openssh-server ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing openssh-server"
 			;;
 		deborphan)
-			( apt-get install -qy deborphan ) > /dev/null 2>&1 & spinner "> installing deborphan"
+			( apt-get install -qy deborphan ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing deborphan"
 			;;
 		git)
-			( apt-get install -qy git && configure git ) > /dev/null 2>&1 & spinner "> installing git"
+			( apt-get install -qy git && configure git ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing git"
 			;;
 		virt-what)
-			( apt-get install -qy virt-what ) > /dev/null 2>&1 & spinner "> installing virt-what"
+			( apt-get install -qy virt-what ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing virt-what"
 			;;
 		docker)
 			configure docker \
@@ -112,7 +114,7 @@ install()
 			(
 				apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
-			) > /dev/null 2>&1 & spinner "> installing docker"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing docker"
 			;;
 		vmware)
         	(
@@ -126,7 +128,7 @@ install()
         		&& ./compile.sh \
         		&& cd .. \
         		&& rm -rf /tmp/VMWareToolsPatches
-        	) > /dev/null 2>&1 & spinner "> installing vmware"
+        	) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing vmware"
 			;;
 		virtualbox)
 			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
@@ -142,7 +144,7 @@ install()
 				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true ) \
 				&& umount -l /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
-			) > /dev/null 2>&1 & spinner "> installing virtualbox"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> installing virtualbox"
 			;;
 		*)
 			error "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
@@ -171,7 +173,7 @@ configure()
 				# restart interfaces
 				ifdown --exclude=lo -a \
 				&& ifup --exclude=lo -a
-			) > /dev/null 2>&1 & spinner "> configuring interfaces"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring interfaces"
 			;;
 		localepurge)
 			(
@@ -182,7 +184,7 @@ configure()
 					echo "${locale}" >> /etc/locale.nopurge
 					sed -i -- 's/NEEDSCONFIGFIRST//g' /etc/locale.nopurge
 				fi
-			) > /dev/null 2>&1 & spinner "> configuring localepurge"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring localepurge"
 			;;
 		grub)
 			(
@@ -192,7 +194,7 @@ configure()
 				&& grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' $file && sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/' $file || echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet"' >> $file \
 				&& grep -q '^GRUB_CMDLINE_LINUX=' $file && sed -i 's/^GRUB_CMDLINE_LINUX=.*/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"/' $file || echo 'GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1"' >> $file \
 				&& update-grub
-			) > /dev/null 2>&1 & spinner "> configuring grub"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring grub"
 			;;
 		git)
 			(
@@ -210,7 +212,7 @@ configure()
 					echo "packedGitLimit = 128m" >> $file
 					echo "packedGitWindowSize = 128m" >> $file
 				fi
-			) > /dev/null 2>&1 & spinner "> configuring git"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring git"
 			;;
 		docker)
 			(
@@ -221,7 +223,7 @@ configure()
 				then
 					echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > /etc/apt/sources.list.d/docker.list
 				fi
-			) > /dev/null 2>&1 & spinner "> configuring docker"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring docker"
 			;;
 		aliases)
 			(
@@ -230,7 +232,7 @@ configure()
 				cat /dev/null > $file
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
 				echo "alias down='docker-compose stop --timeout 600';" >> $file
-			) > /dev/null 2>&1 & spinner "> configuring aliases"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring aliases"
 			;;
 		runscript)
 			(
@@ -249,7 +251,7 @@ configure()
 
 				systemctl enable vdm.service
 				systemctl restart vdm.service
-			) > /dev/null 2>&1 & spinner "> configuring runscript"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> configuring runscript"
 			;;
 		*)
 			error "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|aliases|runscript}"
@@ -262,13 +264,13 @@ update()
 {
 	case "$1" in
 		sources)
-			( apt-get update -qy ) > /dev/null 2>&1 & spinner "> updating sources"
+			( apt-get update -qy ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> updating sources"
 			;;
 		system)
 			(
 				apt-get -qy upgrade \
 				&& apt-get -qy dist-upgrade
-			) > /dev/null 2>&1 & spinner "> updating system"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> updating system"
 			;;
 		vdm)
 			exec bash <(curl -s $VDM_URL_UPDATE)
@@ -284,13 +286,13 @@ wipe()
 {
 	case "$1" in
 		kernel)
-			( dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge ) > /dev/null 2>&1 & spinner "> wiping unused kernel"
+			( dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping unused kernel"
 			;;
 		apt)
-			( apt-get -qy clean && apt-get -qy autoclean && apt-get -qy autoremove --purge && deborphan | xargs apt-get -qy remove --purge ) > /dev/null 2>&1 & spinner "> wiping apt leftovers"
+			( apt-get -qy clean && apt-get -qy autoclean && apt-get -qy autoremove --purge && deborphan | xargs apt-get -qy remove --purge ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping apt leftovers"
 			;;
 		temp)
-			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) > /dev/null 2>&1 & spinner "> wiping temporary directories"
+			( rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping temporary directories"
 			;;
 		logs)
 			(
@@ -320,14 +322,14 @@ wipe()
 				do
 					cp /dev/null $file
 				done
-			) > /dev/null 2>&1 & spinner "> wiping logfiles"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping logfiles"
 			;;
 		container)
-			( docker stop -t 600 $(docker ps -a -q -f status=running) ) > /dev/null 2>&1 & spinner "> stopping docker container"
-			( docker rm $(docker ps -a -q) ) > /dev/null 2>&1 & spinner "> wiping docker container"
+			( docker stop -t 600 $(docker ps -a -q -f status=running) ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> stopping docker container"
+			( docker rm $(docker ps -a -q) ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping docker container"
 			;;
 		images)
-			( docker rmi $(docker images -q) ) > /dev/null 2>&1 & spinner "> wiping docker images"
+			( docker rmi $(docker images -q) ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping docker images"
 			;;
 		mounts)
 			(
@@ -335,7 +337,7 @@ wipe()
 
 				removeMount "/mnt/hgfs"
 				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'removeMount "$@"' bash {} \;
-			) > /dev/null 2>&1 & spinner "> wiping mount points"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping mount points"
 			;;
 		vmware)
 			(
@@ -351,7 +353,7 @@ wipe()
 				&& find /usr -iname "vmware*" -exec rm -rf {} \; \
 				&& find /var -iname "vmware*" -exec rm -rf {} \; \
 				&& find /run -iname "vmware*" -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> wiping vmware"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping vmware"
 			;;
 		virtualbox)
 			(
@@ -372,10 +374,10 @@ wipe()
 				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
 				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
 				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> wiping virtualbox"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping virtualbox"
 			;;
 		ssh)
-			( rm -rf /etc/ssh/ssh_host_* ) > /dev/null 2>&1 & spinner "> wiping ssh keys"
+			( rm -rf /etc/ssh/ssh_host_* ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping ssh keys"
 			;;
 		data)
 			# root user
@@ -385,7 +387,7 @@ wipe()
 				&& find ~/ -name ".ssh" -type d -exec rm -rf {} \; \
 				&& find ~/ -name ".docker" -type d -exec rm -rf {} \; \
 				&& find ~/ -name ".nano_history" -type f -exec rm -rf {} \;
-			) > /dev/null 2>&1 & spinner "> wiping private user data (root)"
+			) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping private user data (root)"
 
 			# other user
 			for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
@@ -398,14 +400,14 @@ wipe()
 					&& find $userdir -name ".ssh" -type d -exec rm -rf {} \; \
 					&& find $userdir -name ".docker" -type d -exec rm -rf {} \; \
 					&& find $userdir -name ".nano_history" -type f -exec rm -rf {} \;
-				) > /dev/null 2>&1 & spinner "> wiping private user data (${username})"
+				) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping private user data (${username})"
 			done
 
 			# locate/mlocate
-			( cat /dev/null > /var/lib/mlocate/mlocate.db ) > /dev/null 2>&1 & spinner "> wiping mlocate.db"
+			( cat /dev/null > /var/lib/mlocate/mlocate.db ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping mlocate.db"
 			;;
 		filesystem)
-			( cat /dev/zero > /tmp/zero.file ) > /dev/null 2>&1 & spinner "> wiping filesystem"
+			( cat /dev/zero > /tmp/zero.file ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> wiping filesystem"
 
 			rm -rf /tmp/zero.file
 			;;
@@ -495,7 +497,7 @@ case "$1" in
 		&& update system \
 		&& wipe all
 
-		( sleep 10 && shutdown -h now ) > /dev/null 2>&1 & spinner "> shutting down"
+		( sleep 10 && shutdown -h now ) >> VDM_LOG 2>> VDM_LOG_ERROR & spinner "> shutting down"
 		;;
 	start)
 		# Generate SSH keys
