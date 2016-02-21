@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 # @todo check removal of networks on build and re-apply via service
 
@@ -11,6 +11,7 @@ DISTRO_VERSION=$(lsb_release -rs)
 COLOR_NOTICE='\e[95m'
 COLOR_ERROR='\e[91m'
 COLOR_NONE='\e[39m'
+TEMP_FILES=( )
 
 log()
 {
@@ -46,7 +47,7 @@ spinner()
     echo -ne "\b\b\b\n"
 }
 
-removeMount()
+remove()
 {
         if grep -qs $1 /proc/mounts;
         then
@@ -56,16 +57,24 @@ removeMount()
         fi
 }
 
-createMount()
+create()
 {
 	target=${1/\/media\/sf_/\/vdm\/}
 
 	ln -sf $1 $target
 }
 
+cleanup() {
+	for file in "${TEMP_FILES[@]}"
+	do
+		remove $file
+	done
+}
+
 export DEBIAN_FRONTEND=noninteractive
-export -f removeMount
-export -f createMount
+export -f remove
+export -f create
+trap cleanup INT TERM EXIT
 
 if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
 then
@@ -116,35 +125,34 @@ install()
 			) > /dev/null 2>&1 & spinner "> installing docker"
 			;;
 		vmware)
+			dir=$(mktemp -d -t vdm.vmware.XXXXXXXX)
+			TEMP_FILES+=($dir)
+
         	(
         		rm -rf /tmp/VMWareToolsPatches \
         		&& apt-get install -qy zip \
-        		&& git clone https://github.com/rasa/vmware-tools-patches.git /tmp/VMWareToolsPatches \
-        		&& cd /tmp/VMWareToolsPatches \
+        		&& git clone https://github.com/rasa/vmware-tools-patches.git /tmp/$dir \
+        		&& cd /tmp/$dir \
         		&& . ./setup.sh \
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
-        		&& ./compile.sh \
-        		&& cd .. \
-        		&& rm -rf /tmp/VMWareToolsPatches
+        		&& ./compile.sh
         	) > /dev/null 2>&1 & spinner "> installing vmware"
 			;;
 		virtualbox)
 			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-			vbox_name="VBoxGuestAdditions_${vbox_version}"
+			file=$(mktemp -d -t vdm.virtualbox.XXXXXXXX)
+			dir=$(mktemp -d -t vdm.virtualbox.XXXXXXXX)
+			TEMP_FILES+=($file)
+			TEMP_FILES+=($dir)
 
 			(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
-				&& rm -rf  /tmp/$vbox_name.iso \
-				&& removeMount /tmp/$vbox_name \
-				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
-				&& mkdir -p /tmp/$vbox_name \
-				&& mount -o loop,ro /tmp/$vbox_name.iso /tmp/$vbox_name \
-				&& /tmp/$vbox_name/VBoxLinuxAdditions.run uninstall --force \
+				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $file \
+				&& mount -o loop,ro $file $dir \
+				&& $dir/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
-				&& ( /tmp/$vbox_name/VBoxLinuxAdditions.run --nox11 || true ) \
-				&& umount -l /tmp/$vbox_name \
-				&& rm -rf /tmp/$vbox_name.iso /tmp/$vbox_name
+				&& ( $dir/VBoxLinuxAdditions.run --nox11 || true )
 			) > /dev/null 2>&1 & spinner "> installing virtualbox"
 			;;
 		*)
@@ -297,32 +305,42 @@ wipe()
 			;;
 		logs)
 			(
-				# remove .gz files
-				for file in $(find /var/log -type f -regex ".*\.gz$")
-				do
-					rm -rf $file
-				done
+				find /var/log -type f -regex ".*\.gz$" -exec rm -rf {} \;
+				find /var/log -type f -regex ".*\.[0-9]$" -exec rm -rf {} \;
+				find /var/log -type f -exec cp /dev/null {} \;
 
-				# remove rotated logfiles
-				for file in $(find /var/log -type f -regex ".*\.[0-9]$")
-				do
-					rm -rf $file
-				done
-
-				# remove samba logs (might leak ip-adresses)
 				if [ -d "/var/log/samba" ]
 				then
-					for file in $(find /var/log/samba -type f)
-					do
-						rm -rf $file
-					done
+					find /var/log/samba -type f -exec rm -rf {} \;
 				fi
 
+
+				# remove .gz files
+				#for file in $(find /var/log -type f -regex ".*\.gz$")
+				#do
+				#	rm -rf $file
+				#done
+
+				# remove rotated logfiles
+				#for file in $(find /var/log -type f -regex ".*\.[0-9]$")
+				#do
+				#	rm -rf $file
+				#done
+
+				# remove samba logs (might leak ip-adresses)
+				#if [ -d "/var/log/samba" ]
+				#then
+				#	for file in $(find /var/log/samba -type f)
+				#	do
+				#		rm -rf $file
+				#	done
+				#fi
+
 				# empty remaining
-				for file in $(find /var/log/ -type f)
-				do
-					cp /dev/null $file
-				done
+				#for file in $(find /var/log -type f)
+				#do
+				#	cp /dev/null $file
+				#done
 			) > /dev/null 2>&1 & spinner "> wiping logfiles"
 			;;
 		container)
@@ -336,8 +354,8 @@ wipe()
 			(
 				rm -rf /vdm
 
-				removeMount "/mnt/hgfs"
-				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'removeMount "$@"' bash {} \;
+				remove "/mnt/hgfs"
+				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'remove "$@"' bash {} \;
 			) > /dev/null 2>&1 & spinner "> wiping mount points"
 			;;
 		vmware)
@@ -362,7 +380,7 @@ wipe()
 				vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
 				vbox_name="VBoxGuestAdditions_${vbox_version}"
 
-				removeMount /tmp/$vbox_name \
+				remove /tmp/$vbox_name \
 				&& rm -rf /tmp/$vbox_name.iso \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/$vbox_name.iso > /tmp/$vbox_name.iso \
 				&& mkdir -p /tmp/$vbox_name \
@@ -435,37 +453,44 @@ wipe()
 
 case "$1" in
 	install)
-		clear
+		case "$2" in
+			virtualbox)
+				install virtualbox
+				;;
+			*)
+				clear
 
-		notice "[VDM] install"
+				notice "[VDM] install"
 
-		addgroup vboxsf > /dev/null 2>&1
+				addgroup vboxsf > /dev/null 2>&1
 
-		for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
-		do
-			username=$(echo "${userdir}" | cut -sd / -f 3-)
+				for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
+				do
+					username=$(echo "${userdir}" | cut -sd / -f 3-)
 
-			adduser -q $username vboxsf > /dev/null 2>&1
-		done
+					adduser -q $username vboxsf > /dev/null 2>&1
+				done
 
-		configure interfaces \
-		&& update sources \
-		&& install localepurge \
-		&& update system \
-		&& configure grub \
-		&& wipe vmware \
-		&& wipe virtualbox \
-		&& install git \
-		&& install gcc \
-		&& install build-essential \
-		&& install linux-headers-generic \
-		&& install openssh-server \
-		&& install deborphan \
-		&& install git \
-		&& install virt-what \
-		&& install docker \
-		&& configure aliases \
-		&& configure runscript
+				configure interfaces \
+				&& update sources \
+				&& install localepurge \
+				&& update system \
+				&& configure grub \
+				&& wipe vmware \
+				&& wipe virtualbox \
+				&& install git \
+				&& install gcc \
+				&& install build-essential \
+				&& install linux-headers-generic \
+				&& install openssh-server \
+				&& install deborphan \
+				&& install git \
+				&& install virt-what \
+				&& install docker \
+				&& configure aliases \
+				&& configure runscript
+				;;
+		esac
 		;;
 	update)
 		clear
@@ -544,7 +569,7 @@ case "$1" in
 					update sources && install virtualbox
 				fi
 
-				sleep 5 && find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'createMount "$@"' bash {} \;
+				sleep 5 && find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'create "$@"' bash {} \;
 				;;
 		esac
 		;;
