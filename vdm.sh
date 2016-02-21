@@ -64,6 +64,22 @@ create()
 	ln -sf $1 $target
 }
 
+tempFile()
+{
+	local path=$(mktemp -t vdm.$1.XXXXXXXX)
+	TEMP_FILES+=($path)
+
+	echo "$path"
+}
+
+tempDir()
+{
+	local path=$(mktemp -d -t vdm.$1.XXXXXXXX)
+	TEMP_FILES+=($path)
+
+	echo "$path"
+}
+
 cleanup() {
 	for file in "${TEMP_FILES[@]}"
 	do
@@ -125,14 +141,13 @@ install()
 			) > /dev/null 2>&1 & spinner "> installing docker"
 			;;
 		vmware)
-			dir=$(mktemp -d -t vdm.vmware.XXXXXXXX)
-			TEMP_FILES+=($dir)
+			target=$(tempDir vmware)
 
         	(
         		rm -rf /tmp/VMWareToolsPatches \
         		&& apt-get install -qy zip \
-        		&& git clone https://github.com/rasa/vmware-tools-patches.git /tmp/$dir \
-        		&& cd /tmp/$dir \
+        		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
+        		&& cd $target \
         		&& . ./setup.sh \
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
@@ -141,18 +156,16 @@ install()
 			;;
 		virtualbox)
 			vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-			file=$(mktemp -d -t vdm.virtualbox.XXXXXXXX)
-			dir=$(mktemp -d -t vdm.virtualbox.XXXXXXXX)
-			TEMP_FILES+=($file)
-			TEMP_FILES+=($dir)
+			target_dir=$(tempDir virtualbox)
+			target_file=$(tempFile virtualbox)
 
 			(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
-				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $file \
-				&& mount -o loop,ro $file $dir \
-				&& $dir/VBoxLinuxAdditions.run uninstall --force \
+				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
+				&& mount -o loop,ro $target_file $target_dir \
+				&& $target_dir/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
-				&& ( $dir/VBoxLinuxAdditions.run --nox11 || true )
+				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
 			) > /dev/null 2>&1 & spinner "> installing virtualbox"
 			;;
 		*)
