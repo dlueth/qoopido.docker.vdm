@@ -136,6 +136,31 @@ install()
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
 			) > /dev/null 2>&1 & showSpinner "> installing docker"
 			;;
+		service)
+			(
+				local file="/lib/systemd/system/vdm.service"
+
+				cat /dev/null > $file
+				echo "[Unit]" >> $file
+				echo "Description=Virtual Docker Machine (VDM)" >> $file
+				echo "Wants=network-online.target" >> $file
+				echo "After=network-online.target" >> $file
+				echo "[Service]" >> $file
+				echo "Type=oneshot" >> $file
+				echo "ExecStart=/usr/sbin/vdm start" >> $file
+				echo "ExecStop=/usr/sbin/vdm stop" >> $file
+				echo "RemainAfterExit=yes" >> $file
+				echo "[Install]" >> $file
+				echo "WantedBy=multi-user.target" >> $file
+
+				systemctl enable systemd-networkd.service
+				systemctl restart systemd-networkd.service
+				systemctl enable systemd-networkd-wait-online.service
+				systemctl restart systemd-networkd-wait-online.service
+				systemctl enable vdm.service
+				systemctl restart vdm.service
+			) > /dev/null 2>&1 & showSpinner "> installing service"
+			;;
 		vmware)
 			local target
 
@@ -160,17 +185,17 @@ install()
 			getTempDir target_dir "virtualbox"
 			getTempFile target_file "virtualbox"
 
-			#(
+			(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
 				&& mount -o loop,ro $target_file $target_dir \
 				&& $target_dir/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
-			#) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
+			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 			;;
 		*)
-			logError "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
+			logError "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|service|vmware|virtualbox}"
 			exit 1
 		;;
 	esac
@@ -266,27 +291,8 @@ configure()
 				echo "alias down='docker-compose stop --timeout 600';" >> $file
 			) > /dev/null 2>&1 & showSpinner "> configuring aliases"
 			;;
-		runscript)
-			(
-				local file="/lib/systemd/system/vdm.service"
-
-				cat /dev/null > $file
-				echo "[Unit]" >> $file
-				echo "Description=Virtual Docker Machine (VDM)" >> $file
-				echo "[Service]" >> $file
-				echo "Type=oneshot" >> $file
-				echo "ExecStart=/usr/sbin/vdm start" >> $file
-				echo "ExecStop=/usr/sbin/vdm stop" >> $file
-				echo "RemainAfterExit=yes" >> $file
-				echo "[Install]" >> $file
-				echo "WantedBy=multi-user.target" >> $file
-
-				systemctl enable vdm.service
-				systemctl restart vdm.service
-			) > /dev/null 2>&1 & showSpinner "> configuring runscript"
-			;;
 		*)
-			logError "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|aliases|runscript}"
+			logError "> Usage: vdm configure {interfaces|localepurge|grub|git|docker|aliases}"
 			exit 1
 			;;
 	esac
@@ -454,46 +460,38 @@ wipe()
 
 case "$1" in
 	install)
-		case "$2" in
-			virtualbox)
-				install virtualbox
-				;;
-			*)
-				clear
+		clear
 
-				logNotice "[VDM] install"
+		logNotice "[VDM] install"
 
-				addgroup vboxsf > /dev/null 2>&1
+#		addgroup vboxsf > /dev/null 2>&1
 
-				for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
-				do
-					username=$(echo "${userdir}" | cut -sd / -f 3-)
+#		for userdir in $(find /home -maxdepth 1 -mindepth 1 -type d)
+#		do
+#			username=$(echo "${userdir}" | cut -sd / -f 3-)
 
-					( adduser -q $username vboxsf ) > /dev/null 2>&1
-				done
+#			( adduser -q $username vboxsf ) > /dev/null 2>&1
+#		done
 
-				# && wipe vmware \
-				# && wipe virtualbox \
+		#&& install git \
+		#&& install gcc \
+		#&& install build-essential \
+		#&& install linux-headers-generic \
 
-				configure interfaces \
-				&& update sources \
-				&& install localepurge \
-				&& update system \
-				&& configure grub \
-				&& install git \
-				&& install gcc \
-				&& install build-essential \
-				&& install linux-headers-generic \
-				&& install openssh-server \
-				&& install deborphan \
-				&& install git \
-				&& install virt-what \
-				&& install docker \
-				&& configure aliases
-				#\
-				#&& configure runscript
-				;;
-		esac
+		configure interfaces \
+		&& update sources \
+		&& install localepurge \
+		&& update system \
+		&& wipe vmware \
+		&& wipe virtualbox \
+		&& install openssh-server \
+		&& install deborphan \
+		&& install virt-what \
+		&& install docker \
+		&& install service \
+		&& configure aliases
+		# \
+		#&& configure grub
 		;;
 	update)
 		clear
