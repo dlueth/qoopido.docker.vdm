@@ -112,6 +112,12 @@ install()
 			#(
 				local file="/lib/systemd/system/vdm.service"
 
+				if [ -f $file ]
+				then
+					systemctl stop vdm.service
+					systemctl disable vdm.service
+				fi
+
 				cat /dev/null > $file
 				echo "[Unit]" >> $file
 				echo "Description=Virtual Docker Machine (VDM)" >> $file
@@ -133,6 +139,37 @@ install()
 				systemctl restart vdm.service
 			#) > /dev/null 2>&1 & showSpinner "> installing service"
 			;;
+		docker)
+			#(
+				local file="/etc/apt/sources.list.d/docker.list"
+				if [ ! -f $file ]
+				then
+					echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > $file
+				fi
+
+				apt-get install -qy apt-transport-https ca-certificates \
+				&& apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D \
+				&& update sources \
+				&& apt-get remove -qy lxc-docker --purge \
+				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
+			#) > /dev/null 2>&1 & showSpinner "> installing docker"
+			;;
+		vmware)
+			local target
+
+			getTempDir target "vmware"
+
+        	#(
+        		install git \
+        		&& apt-get install -qy zip \
+        		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
+        		&& cd $target \
+        		&& . ./setup.sh \
+        		&& ./download-tools.sh latest \
+        		&& ./untar-and-patch.sh \
+        		&& ./compile.sh
+        	#) > /dev/null 2>&1 & showSpinner "> installing vmware"
+			;;
 		virtualbox)
 			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
 			local target_dir
@@ -149,6 +186,26 @@ install()
 				&& rm -rf /opt/VBox* \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
 			#) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
+			;;
+		git)
+			#(
+				local file="/etc/gitconfig"
+
+				if [ ! -f $file ]
+				then
+					cat /dev/null > $file
+					echo "[pack]" >> $file
+					echo "threads = 1" >> $file
+					echo "deltaCacheSize = 128m" >> $file
+					echo "packSizeLimit = 128m" >> $file
+					echo "windowMemory = 128m" >> $file
+					echo "[core]" >> $file
+					echo "packedGitLimit = 128m" >> $file
+					echo "packedGitWindowSize = 128m" >> $file
+				fi
+
+				apt-get install -qy git
+			#) > /dev/null 2>&1 & showSpinner "> configuring git"
 			;;
 	esac
 }
@@ -178,6 +235,15 @@ configure()
 				done
 			#) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 			;;
+		aliases)
+			#(
+				local file="/etc/profile.d/vdm.sh"
+
+				cat /dev/null > $file
+				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
+				echo "alias down='docker-compose stop --timeout 600';" >> $file
+			#) > /dev/null 2>&1 & showSpinner "> configuring aliases"
+			;;
 	esac
 }
 
@@ -195,38 +261,179 @@ update()
 				&& apt-get -qy dist-upgrade
 			#) > /dev/null 2>&1 & showSpinner "> updating system"
 			;;
+		vdm)
+			exec bash <(curl -s $VDM_URL_UPDATE)
+			;;
+	esac
+}
+
+wipe()
+{
+	case "$1" in
+		container)
+			#(
+				docker stop -t 600 $(docker ps -a -q -f status=running)
+			#) > /dev/null 2>&1 & showSpinner "> stopping docker container"
+
+			#(
+				docker rm $(docker ps -a -q)
+			#) > /dev/null 2>&1 & showSpinner "> wiping docker container"
+			;;
+		images)
+			#(
+				docker rmi $(docker images -q)
+			#) > /dev/null 2>&1 & showSpinner "> wiping docker images"
+			;;
+		mounts)
+			#(
+				rm -rf /vdm
+
+				saveRemove "/mnt/hgfs"
+				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'saveRemove "$@"' bash {} \;
+			#) > /dev/null 2>&1 & showSpinner "> wiping mount points"
+			;;
+		vmware)
+			#(
+				wipe mounts
+
+				if [ -f "/usr/bin/vmware-uninstall-tools.pl" ]
+				then
+					#(
+						/usr/bin/vmware-uninstall-tools.pl
+					#) > /dev/null 2>&1
+				fi
+
+				# cleanup
+				rm -rf /vmware* \
+				&& find /lib -iname "vmware*" -exec rm -rf {} \; \
+				&& find /var -iname "vmware*" -exec rm -rf {} \; \
+				&& find /run -iname "vmware*" -exec rm -rf {} \; \
+				&& find /usr -iname "vmware*" -exec rm -rf {} \; \
+				&& find /etc -iname "vmware*" -exec rm -rf {} \; \
+				&& find /tmp -iname "vmware*" -exec rm -rf {} \;
+			#) > /dev/null 2>&1 & showSpinner "> wiping vmware"
+			;;
+		virtualbox)
+			#(
+				local service
+				local module
+
+				# unmount mounts
+				wipe mounts
+
+				# stop & disable related services
+				for service in $(systemctl | egrep -io '^vbox[a-z0-9-]+\.service')
+				do
+					systemctl stop $service
+					systemctl disable $service
+				done
+
+				# remove modules having dependencies
+				for module in $(lsmod | egrep -io vbox[a-z0-9-]+$)
+				do
+					modprobe -r $module
+				done
+
+				# remove modules without dependencies
+				for module in $(lsmod | egrep -io ^vbox[a-z0-9-]+)
+				do
+					modprobe -r $module
+				done
+
+				# remove filesystem remains
+				rm -rf /opt/VBox* \
+				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
+				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
+				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
+			#) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
+		;;
 	esac
 }
 
 case "$1" in
 	install)
-		logNotice "[VDM] install localepurge"
+		logNotice "[VDM] install"
 
 		configure interfaces \
+		&& wipe vmware \
+		&& wipe virtualbox \
 		&& update sources \
 		&& update system \
 		&& install virt-what \
-		&& install service
+		&& install service \
+		&& install docker \
+		&& configure aliases
+		;;
+	update)
+		clear
+
+		logNotice "[VDM] update"
+
+		update sources \
+		&& update system
+
+		update vdm
 		;;
 	service)
 		case "$2" in
 			start)
+				# Generate SSH keys
+				if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_rsa_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
+				fi
+
+				if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_dsa_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_dsa_key -N '' -t dsa
+				fi
+
+				if [ ! -f "/etc/ssh/ssh_host_ecdsa_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_ecdsa_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_ecdsa_key -N '' -t ecdsa
+				fi
+
+				if [ ! -f "/etc/ssh/ssh_host_ed25519_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_ed25519_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_ed25519_key -N '' -t ed25519
+				fi
+
+				# Initialize mounts
+				mkdir -p /vdm
+
 				case $(virt-what | sed -n 1p) in
 					virtualbox)
 						if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
 						then
-							update sources && install virtualbox
+							update sources \
+							&& install virtualbox
 						fi
+
+						symlinkVirtualboxMount()
+						{
+							target=${1/\/media\/sf_/\/vdm\/}
+
+							ln -sf $1 $target
+						}
+
+						export -f symlinkVirtualboxMount
+
+						find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
 					;;
 				esac
 			;;
 			stop)
-
+				wipe mounts \
+				&& wipe container
 			;;
 		esac
 		;;
 	*)
-		logError "Usage: vdm [install|service]"
+		logError "Usage: vdm [install|update|service]"
 		exit 1
 		;;
 esac
