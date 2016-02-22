@@ -160,14 +160,14 @@ install()
 			getTempDir target_dir "virtualbox"
 			getTempFile target_file "virtualbox"
 
-			(
+			#(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
 				&& mount -o loop,ro $target_file $target_dir \
 				&& $target_dir/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
-			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
+			#) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 			;;
 		*)
 			logError "> Usage: vdm install {localepurge|gcc|build-essential|linux-headers-generic|openssh-server|deborphan|git|virt-what|docker|vmware|virtualbox}"
@@ -472,13 +472,14 @@ case "$1" in
 					( adduser -q $username vboxsf ) > /dev/null 2>&1
 				done
 
+				# && wipe vmware \
+				# && wipe virtualbox \
+
 				configure interfaces \
 				&& update sources \
 				&& install localepurge \
 				&& update system \
 				&& configure grub \
-				&& wipe vmware \
-				&& wipe virtualbox \
 				&& install git \
 				&& install gcc \
 				&& install build-essential \
@@ -488,8 +489,9 @@ case "$1" in
 				&& install git \
 				&& install virt-what \
 				&& install docker \
-				&& configure aliases \
-				&& configure runscript
+				&& configure aliases
+				#\
+				#&& configure runscript
 				;;
 		esac
 		;;
