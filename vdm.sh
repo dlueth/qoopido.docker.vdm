@@ -103,6 +103,11 @@ fi
 install()
 {
 	case "$1" in
+		openssh-server)
+			#(
+				apt-get install -qy openssh-server
+			#) > /dev/null 2>&1 & showSpinner "> installing openssh-server"
+			;;
 		virt-what)
 			#(
 				apt-get install -qy virt-what
@@ -354,11 +359,13 @@ case "$1" in
 	install)
 		logNotice "[VDM] install"
 
+		#&& wipe vmware \
+
 		configure interfaces \
-		&& wipe vmware \
 		&& wipe virtualbox \
 		&& update sources \
 		&& update system \
+		&& install openssh-server \
 		&& install virt-what \
 		&& install service \
 		&& install docker \
