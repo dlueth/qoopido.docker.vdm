@@ -104,10 +104,12 @@ install()
 {
 	case "$1" in
 		virt-what)
-			( apt-get install -qy virt-what ) > /dev/null 2>&1 & showSpinner "> installing virt-what"
+			#(
+				apt-get install -qy virt-what
+			#) > /dev/null 2>&1 & showSpinner "> installing virt-what"
 			;;
 		service)
-			(
+			#(
 				local file="/lib/systemd/system/vdm.service"
 
 				cat /dev/null > $file
@@ -129,7 +131,7 @@ install()
 				systemctl restart systemd-networkd-wait-online.service
 				systemctl enable vdm.service
 				systemctl restart vdm.service
-			) > /dev/null 2>&1 & showSpinner "> installing service"
+			#) > /dev/null 2>&1 & showSpinner "> installing service"
 			;;
 		virtualbox)
 			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
@@ -139,14 +141,14 @@ install()
 			getTempDir target_dir "virtualbox"
 			getTempFile target_file "virtualbox"
 
-			(
+			#(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
 				&& mount -o loop,ro $target_file $target_dir \
 				&& $target_dir/VBoxLinuxAdditions.run uninstall --force \
 				&& rm -rf /opt/VBox* \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
-			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
+			#) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 			;;
 	esac
 }
@@ -155,7 +157,7 @@ configure()
 {
 	case "$1" in
 		interfaces)
-			(
+			#(
 				local file="/etc/network/interfaces.d/vdm"
 				local interface
 
@@ -174,7 +176,7 @@ configure()
 						ifdown $interface && ifup $interface
 					fi
 				done
-			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
+			#) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 			;;
 	esac
 }
@@ -183,13 +185,15 @@ update()
 {
 	case "$1" in
 		sources)
-			( apt-get update -qy ) > /dev/null 2>&1 & showSpinner "> updating sources"
+			#(
+				apt-get update -qy
+			#) > /dev/null 2>&1 & showSpinner "> updating sources"
 			;;
 		system)
-			(
+			#(
 				apt-get -qy upgrade \
 				&& apt-get -qy dist-upgrade
-			) > /dev/null 2>&1 & showSpinner "> updating system"
+			#) > /dev/null 2>&1 & showSpinner "> updating system"
 			;;
 	esac
 }
