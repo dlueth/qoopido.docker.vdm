@@ -3,6 +3,11 @@
 # @todo check logging options
 # @todo check removal of networks on build and re-apply via service
 
+# http://linuxcommand.org/wss0150.php
+# http://askubuntu.com/questions/323566/separate-etc-network-interfaces-file
+# http://tldp.org/HOWTO/Bash-Prog-Intro-HOWTO-3.html#ss3.3
+
+
 VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
 # VDM_LOG="/var/log/vdm.log"
 # VDM_LOG_ERROR="/var/log/vdm.error.log"
@@ -88,9 +93,9 @@ export -f saveRemove
 
 trap wipeTemp INT TERM EXIT
 
-if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
+if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '16.04' ];
 then
-	logError "This script targets Ubuntu 15.10 specifically!"
+	logError "This script targets Ubuntu 16.04 specifically!"
 	exit 1
 fi
 
@@ -104,17 +109,17 @@ install()
 {
 	case "$1" in
 		openssh-server)
-			#(
+			(
 				apt-get install -qy openssh-server
-			#) > /dev/null 2>&1 & showSpinner "> installing openssh-server"
+			) > /dev/null 2>&1 & showSpinner "> installing openssh-server"
 			;;
 		virt-what)
-			#(
+			(
 				apt-get install -qy virt-what
-			#) > /dev/null 2>&1 & showSpinner "> installing virt-what"
+			) > /dev/null 2>&1 & showSpinner "> installing virt-what"
 			;;
 		service)
-			#(
+			(
 				local file="/lib/systemd/system/vdm.service"
 
 				if [ -f $file ]
@@ -142,10 +147,10 @@ install()
 				systemctl restart systemd-networkd-wait-online.service
 				systemctl enable vdm.service
 				systemctl restart vdm.service
-			#) > /dev/null 2>&1 & showSpinner "> installing service"
+			) > /dev/null 2>&1 & showSpinner "> installing service"
 			;;
 		docker)
-			#(
+			(
 				local file="/etc/apt/sources.list.d/docker.list"
 				if [ ! -f $file ]
 				then
@@ -157,14 +162,14 @@ install()
 				&& update sources \
 				&& apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
-			#) > /dev/null 2>&1 & showSpinner "> installing docker"
+			) > /dev/null 2>&1 & showSpinner "> installing docker"
 			;;
 		vmware)
 			local target
 
 			getTempDir target "vmware"
 
-        	#(
+        	(
         		install git \
         		&& apt-get install -qy zip \
         		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
@@ -173,7 +178,7 @@ install()
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
         		&& ./compile.sh
-        	#) > /dev/null 2>&1 & showSpinner "> installing vmware"
+        	) > /dev/null 2>&1 & showSpinner "> installing vmware"
 			;;
 		virtualbox)
 			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
@@ -183,17 +188,15 @@ install()
 			getTempDir target_dir "virtualbox"
 			getTempFile target_file "virtualbox"
 
-			#(
+			(
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
 				&& mount -o loop,ro $target_file $target_dir \
-				&& $target_dir/VBoxLinuxAdditions.run uninstall --force \
-				&& rm -rf /opt/VBox* \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
-			#) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
+			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 			;;
 		git)
-			#(
+			(
 				local file="/etc/gitconfig"
 
 				if [ ! -f $file ]
@@ -210,7 +213,7 @@ install()
 				fi
 
 				apt-get install -qy git
-			#) > /dev/null 2>&1 & showSpinner "> configuring git"
+			) > /dev/null 2>&1 & showSpinner "> configuring git"
 			;;
 	esac
 }
@@ -219,7 +222,7 @@ configure()
 {
 	case "$1" in
 		interfaces)
-			#(
+			(
 				local file="/etc/network/interfaces.d/vdm"
 				local interface
 
@@ -238,16 +241,16 @@ configure()
 						ifdown $interface && ifup $interface
 					fi
 				done
-			#) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
+			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 			;;
 		aliases)
-			#(
+			(
 				local file="/etc/profile.d/vdm.sh"
 
 				cat /dev/null > $file
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
 				echo "alias down='docker-compose stop --timeout 600';" >> $file
-			#) > /dev/null 2>&1 & showSpinner "> configuring aliases"
+			) > /dev/null 2>&1 & showSpinner "> configuring aliases"
 			;;
 	esac
 }
@@ -256,15 +259,16 @@ update()
 {
 	case "$1" in
 		sources)
-			#(
+			(
 				apt-get update -qy
-			#) > /dev/null 2>&1 & showSpinner "> updating sources"
+			) > /dev/null 2>&1 & showSpinner "> updating sources"
 			;;
 		system)
-			#(
+			(
 				apt-get -qy upgrade \
-				&& apt-get -qy dist-upgrade
-			#) > /dev/null 2>&1 & showSpinner "> updating system"
+				&& apt-get -qy dist-upgrade \
+				&& service lxd restart
+			) > /dev/null 2>&1 & showSpinner "> updating system"
 			;;
 		vdm)
 			exec bash <(curl -s $VDM_URL_UPDATE)
@@ -276,50 +280,50 @@ wipe()
 {
 	case "$1" in
 		container)
-			#(
+			(
 				docker stop -t 600 $(docker ps -a -q -f status=running)
-			#) > /dev/null 2>&1 & showSpinner "> stopping docker container"
+			) > /dev/null 2>&1 & showSpinner "> stopping docker container"
 
-			#(
+			(
 				docker rm $(docker ps -a -q)
-			#) > /dev/null 2>&1 & showSpinner "> wiping docker container"
+			) > /dev/null 2>&1 & showSpinner "> wiping docker container"
 			;;
 		images)
-			#(
+			(
 				docker rmi $(docker images -q)
-			#) > /dev/null 2>&1 & showSpinner "> wiping docker images"
+			) > /dev/null 2>&1 & showSpinner "> wiping docker images"
 			;;
 		mounts)
-			#(
+			(
 				rm -rf /vdm
 
 				saveRemove "/mnt/hgfs"
 				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'saveRemove "$@"' bash {} \;
-			#) > /dev/null 2>&1 & showSpinner "> wiping mount points"
+			) > /dev/null 2>&1 & showSpinner "> wiping mount points"
 			;;
 		vmware)
-			#(
+			(
 				wipe mounts
 
 				if [ -f "/usr/bin/vmware-uninstall-tools.pl" ]
 				then
-					#(
+					(
 						/usr/bin/vmware-uninstall-tools.pl
-					#) > /dev/null 2>&1
+					) > /dev/null 2>&1
 				fi
 
 				# cleanup
 				rm -rf /vmware* \
-				&& find /lib -iname "vmware*" -exec rm -rf {} \; \
-				&& find /var -iname "vmware*" -exec rm -rf {} \; \
-				&& find /run -iname "vmware*" -exec rm -rf {} \; \
-				&& find /usr -iname "vmware*" -exec rm -rf {} \; \
-				&& find /etc -iname "vmware*" -exec rm -rf {} \; \
-				&& find /tmp -iname "vmware*" -exec rm -rf {} \;
-			#) > /dev/null 2>&1 & showSpinner "> wiping vmware"
+				&& find /lib ! -readable -prune -iname "vmware*" -exec rm -rf {} \; \
+				&& find /var ! -readable -prune -iname "vmware*" -exec rm -rf {} \; \
+				&& find /run ! -readable -prune -iname "vmware*" -exec rm -rf {} \; \
+				&& find /usr ! -readable -prune -iname "vmware*" -exec rm -rf {} \; \
+				&& find /etc ! -readable -prune -iname "vmware*" -exec rm -rf {} \; \
+				&& find /tmp ! -readable -prune -iname "vmware*" -exec rm -rf {} \;
+			) > /dev/null 2>&1 & showSpinner "> wiping vmware"
 			;;
 		virtualbox)
-			#(
+			(
 				local service
 				local module
 
@@ -347,10 +351,10 @@ wipe()
 
 				# remove filesystem remains
 				rm -rf /opt/VBox* \
-				&& find /lib -iname "vbox*" -type f -exec rm -rf {} \; \
-				&& find /var -iname "vbox*" -type f -exec rm -rf {} \; \
-				&& find /run -iname "vbox*" -type f -exec rm -rf {} \;
-			#) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
+				&& find /lib ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \; \
+				&& find /var ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \; \
+				&& find /run ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \;
+			) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
 		;;
 	esac
 }
@@ -359,9 +363,8 @@ case "$1" in
 	install)
 		logNotice "[VDM] install"
 
-		#&& wipe vmware \
-
 		configure interfaces \
+		&& wipe vmware \
 		&& wipe virtualbox \
 		&& update sources \
 		&& update system \
@@ -414,7 +417,7 @@ case "$1" in
 
 				case $(virt-what | sed -n 1p) in
 					virtualbox)
-						if [[ -z $(lsmod | grep vboxguest  | sed -n 1p) ]]
+						if [[ -z $(lsmod | grep vboxguest | sed -n 1p) ]]
 						then
 							update sources \
 							&& install virtualbox
@@ -431,16 +434,38 @@ case "$1" in
 
 						find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
 					;;
+					vmware)
+						if [[ -z $(ps ax | grep vmtoolsd | sed -n 1p) ]]
+						then
+							update sources \
+							&& install vmware
+						fi
+
+						symlinkVmwareMount()
+						{
+							target=${1/\/mnt\/hgfs\//\/vdm\/}
+
+							ln -sf $1 $target
+						}
+
+						export -f symlinkVmwareMount
+
+						find /mnt/hgfs -maxdepth 1 -mindepth 1 -type d -exec bash -c 'symlinkVmwareMount "$@"' bash {} \;
+					;;
 				esac
 			;;
 			stop)
 				wipe mounts \
 				&& wipe container
 			;;
+			*)
+				logError "Usage: vdm service [start|stop]"
+				exit 1
+				;;
 		esac
 		;;
 	*)
-		logError "Usage: vdm [install|update|service]"
+		logError "Usage: vdm [install|update|service [start|stop]]"
 		exit 1
 		;;
 esac

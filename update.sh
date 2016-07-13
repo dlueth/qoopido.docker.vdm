@@ -31,9 +31,9 @@ showSpinner()
     echo -ne "\b\b\b\n"
 }
 
-if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '15.10' ];
+if [ ! $DISTRO_NAME = 'Ubuntu' ] || [ ! $DISTRO_VERSION = '16.04' ];
 then
-	logError "This script targets Ubuntu 15.10 specifically!"
+	logError "This script targets Ubuntu 16.04 specifically!"
 	exit 1
 fi
 
