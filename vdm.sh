@@ -249,7 +249,7 @@ configure()
 
 				cat /dev/null > $file
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
-				echo "alias down='docker-compose stop --timeout 600';" >> $file
+				echo "alias down='docker-compose stop --timeout 600 && docker rm $(docker ps -a -q)';" >> $file
 			) > /dev/null 2>&1 & showSpinner "> configuring aliases"
 			;;
 	esac
@@ -440,6 +440,11 @@ case "$1" in
 							update sources \
 							&& install vmware
 						fi
+
+						while [ ! -d /mnt/hgfs ]
+						do
+								sleep 1
+						done
 
 						symlinkVmwareMount()
 						{
