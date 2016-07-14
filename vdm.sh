@@ -142,11 +142,8 @@ install()
 				echo "WantedBy=multi-user.target" >> $file
 
 				systemctl enable systemd-networkd.service
-				systemctl restart systemd-networkd.service
-				systemctl enable systemd-networkd-wait-online.service
-				systemctl restart systemd-networkd-wait-online.service
+				systemctl enablesystemd-networkd-wait-online.service
 				systemctl enable vdm.service
-				systemctl restart vdm.service
 			) > /dev/null 2>&1 & showSpinner "> installing service"
 			;;
 		docker)
