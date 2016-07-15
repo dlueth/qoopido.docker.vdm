@@ -2,29 +2,10 @@ alias up='docker-compose up -d --timeout 600 && docker-compose logs';
 alias down='docker-compose stop --timeout 600 && docker rm $(docker ps -a -q)';
 
 case $(virt-what | sed -n 1p) in
-	virtualbox)
-		if [[ -z $(lsmod | grep vboxguest | sed -n 1p) ]]
-		then
-			update sources \
-			&& install virtualbox
-		fi
-
-		symlinkVirtualboxMount()
-		{
-			target=${1/\/media\/sf_/\/vdm\/}
-
-			ln -sf $1 $target
-		}
-
-		export -f symlinkVirtualboxMount
-
-		find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
-	;;
 	vmware)
 		if [ $(systemctl is-active vmware-tools.service) = 'inactive' ];
 		then
-			apt-get update -qy \
-			&&
+			/usr/sbin/vdm install vmware
 		fi
 
 		while [ ! -d /mnt/hgfs ]
@@ -42,5 +23,23 @@ case $(virt-what | sed -n 1p) in
 		export -f symlinkVmwareMount
 
 		find /mnt/hgfs -maxdepth 1 -mindepth 1 -type d -exec bash -c 'symlinkVmwareMount "$@"' bash {} \;
+	;;
+	virtualbox)
+#		if [[ -z $(lsmod | grep vboxguest | sed -n 1p) ]]
+#		then
+#			update sources \
+#			&& install virtualbox
+#		fi
+
+#		symlinkVirtualboxMount()
+#		{
+#			target=${1/\/media\/sf_/\/vdm\/}
+
+#			ln -sf $1 $target
+#		}
+
+#		export -f symlinkVirtualboxMount
+
+#		find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
 	;;
 esac

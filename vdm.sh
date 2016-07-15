@@ -9,6 +9,7 @@
 
 
 VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
+VDM_URL_PROFILE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/etc/profile.d/vdm.sh"
 # VDM_LOG="/var/log/vdm.log"
 # VDM_LOG_ERROR="/var/log/vdm.error.log"
 DISTRO_NAME=$(lsb_release -is)
@@ -141,36 +142,56 @@ install()
 			) > /dev/null 2>&1 & showSpinner "> configuring git"
 		;;
 		vmware)
-			local target
-
-			getTempDir target "vmware"
-
         	(
+        		local target
+
+				getTempDir target "vmware"
+
         		install git \
         		&& apt-get install -qy zip \
         		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
         		&& cd $target \
-        		&& . ./setup.sh \
+        		&& . ./setup.sh \ikel
+
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
         		&& ./compile.sh
         	) > /dev/null 2>&1 & showSpinner "> installing vmware"
 		;;
 		virtualbox)
-			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
-			local target_dir
-			local target_file
-
-			getTempDir target_dir "virtualbox"
-			getTempFile target_file "virtualbox"
-
 			(
+				local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
+				local target_dir
+				local target_file
+
+				getTempDir target_dir "virtualbox"
+				getTempFile target_file "virtualbox"
+
 				apt-get install -qy dkms build-essential linux-headers-$(uname -r) \
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
 				&& mount -o loop,ro $target_file $target_dir \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
 			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 		;;
+		service)
+			(
+				local file="/lib/systemd/system/vdm.service"
+
+				cat /dev/null > $file
+				echo "[Unit]" >> $file
+				echo "Description=Virtual Docker Machine (VDM)" >> $file
+				echo "[Service]" >> $file
+				echo "Type=oneshot" >> $file
+				echo "ExecStart=/usr/sbin/vdm service start" >> $file
+				echo "ExecStop=/usr/sbin/vdm service stop" >> $file
+				echo "RemainAfterExit=yes" >> $file
+				echo "[Install]" >> $file
+				echo "WantedBy=multi-user.target" >> $file
+
+				systemctl enable vdm.service
+				systemctl restart vdm.service
+			) > /dev/null 2>&1 & showSpinner "> installing service"
+			;;
 	esac
 }
 
@@ -203,14 +224,10 @@ configure()
 				systemctl restart systemd-networkd.service
 			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 		;;
-		aliases)
+		vdm)
 			(
-				local file="/etc/profile.d/vdm.sh"
-
-				cat /dev/null > $file
-				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
-				echo "alias down='docker-compose stop --timeout 600 && docker rm $(docker ps -a -q)';" >> $file
-			) > /dev/null 2>&1 & showSpinner "> configuring aliases"
+				curl -s $VDM_URL_PROFILE > /etc/profile.d/vdm.sh
+			) > /dev/null 2>&1 & showSpinner "> configuring vdm"
 		;;
 		git)
 			(
@@ -249,7 +266,10 @@ update()
 			) > /dev/null 2>&1 & showSpinner "> updating system"
 		;;
 		vdm)
-			exec bash <(curl -s $VDM_URL_UPDATE)
+			(
+				exec bash <(curl -s $VDM_URL_UPDATE) \
+				&& configure vdm
+			) > /dev/null 2>&1 & showSpinner "> updating vdm"
 		;;
 	esac
 }
@@ -326,17 +346,7 @@ wipe()
 
 case "$1" in
 	install)
-		logNotice "[VDM] install"
-
-		configure interfaces
-		update sources
-		update system
-		install openssh-server
-		install virt-what
-		install docker
-		configure aliases
-
-		case $(virt-what | sed -n 1p) in
+		case "$2" in
 			vmware)
 				wipe vmware
 				install vmware
@@ -344,6 +354,30 @@ case "$1" in
 			virtualbox)
 				wipe virtualbox
 				install virtualbox
+			;;
+			*)
+				logNotice "[VDM] install"
+
+				configure interfaces
+				update sources
+				update system
+				install openssh-server
+				install virt-what
+				install docker
+				install service
+
+				case $(virt-what | sed -n 1p) in
+					vmware)
+						wipe vmware
+						install vmware
+					;;
+					virtualbox)
+						wipe virtualbox
+						install virtualbox
+					;;
+				esac
+
+				configure vdm
 			;;
 		esac
 	;;
@@ -354,8 +388,23 @@ case "$1" in
 		&& update system \
 		&&  update vdm
 	;;
+	service)
+		case "$2" in
+			start)
+				mkdir -p /vdm
+			;;
+			stop)
+				wipe container \
+				&& find /vdm -maxdepth 1 -mindepth 1 -type d -exec bash -c 'saveRemove "$@"' bash {} \;
+			;;
+			*)
+				logError "Usage: vdm service [start|stop]"
+				exit 1
+				;;
+		esac
+		;;
 	*)
-		logError "Usage: vdm [install|update]"
+		logError "Usage: vdm [install|update|service]"
 		exit 1
 	;;
 esac
