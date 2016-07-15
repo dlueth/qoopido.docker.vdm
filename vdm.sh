@@ -151,8 +151,7 @@ install()
         		&& apt-get install -qy zip \
         		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
         		&& cd $target \
-        		&& . ./setup.sh \ikel
-
+        		&& . ./setup.sh \
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
         		&& ./compile.sh
