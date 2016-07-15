@@ -152,6 +152,7 @@ install()
 				systemctl enable systemd-networkd-wait-online.service
 				systemctl restart systemd-networkd-wait-online.service
 				systemctl enable vdm.service
+				systemctl restart vdm.service
 			) > /dev/null 2>&1 & showSpinner "> installing service"
 			;;
 		docker)
@@ -174,7 +175,7 @@ install()
 
 			getTempDir target "vmware"
 
-        	(
+        	#(
         		install git \
         		&& apt-get install -qy zip \
         		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
@@ -183,7 +184,7 @@ install()
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
         		&& ./compile.sh
-        	) > /dev/null 2>&1 & showSpinner "> installing vmware"
+        	#) > /dev/null 2>&1 & showSpinner "> installing vmware"
 			;;
 		virtualbox)
 			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
@@ -233,6 +234,8 @@ configure()
 
 				cat /dev/null > $file
 
+				systemctl restart systemd-networkd.service
+
 				for interface in $(ifconfig -a | sed 's/[ \t].*//;/^\(lo\|docker.*\|\)$/d')
 				do
 					local state=$(grep $interface /etc/network/interfaces)
@@ -246,6 +249,8 @@ configure()
 						ifdown $interface && ifup $interface
 					fi
 				done
+
+				systemctl restart systemd-networkd.service
 			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
 			;;
 		aliases)
