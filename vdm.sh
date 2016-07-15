@@ -122,7 +122,13 @@ install()
 			(
 				local file="/lib/systemd/system/vdm.service"
 
-				if [ -f $file ]
+				# if [ -f $file ]
+				# then
+				#	systemctl stop vdm.service
+				#	systemctl disable vdm.service
+				# fi
+
+				if [ ! $(systemctl is-active vdm.service) = 'inactive' ];
 				then
 					systemctl stop vdm.service
 					systemctl disable vdm.service
@@ -292,18 +298,8 @@ wipe()
 				docker rmi $(docker images -q)
 			) > /dev/null 2>&1 & showSpinner "> wiping docker images"
 			;;
-		mounts)
-			(
-				rm -rf /vdm
-
-				saveRemove "/mnt/hgfs"
-				find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'saveRemove "$@"' bash {} \;
-			) > /dev/null 2>&1 & showSpinner "> wiping mount points"
-			;;
 		vmware)
 			(
-				wipe mounts
-
 				if [ -f "/usr/bin/vmware-uninstall-tools.pl" ]
 				then
 					(
@@ -325,9 +321,6 @@ wipe()
 			(
 				local service
 				local module
-
-				# unmount mounts
-				wipe mounts
 
 				# stop & disable related services
 				for service in $(systemctl | egrep -io '^vbox[a-z0-9-]+\.service')
@@ -434,7 +427,13 @@ case "$1" in
 						find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
 					;;
 					vmware)
-						if [[ -z $(ps ax | grep vmtoolsd | sed -n 1p) ]]
+						# if [[ -z $(ps ax | grep vmtoolsd | sed -n 1p) ]]
+						# then
+						#	update sources \
+						#	&& install vmware
+						# fi
+
+						if [ $(systemctl is-active vmware-tools.service) = 'inactive' ];
 						then
 							update sources \
 							&& install vmware
@@ -459,8 +458,8 @@ case "$1" in
 				esac
 			;;
 			stop)
-				wipe mounts \
-				&& wipe container
+				wipe container \
+				&& find /vdm -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'saveRemove "$@"' bash {} \;
 			;;
 			*)
 				logError "Usage: vdm service [start|stop]"
