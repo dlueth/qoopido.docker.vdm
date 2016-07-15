@@ -112,16 +112,52 @@ install()
 			(
 				apt-get install -qy openssh-server
 			) > /dev/null 2>&1 & showSpinner "> installing openssh-server"
-		;;
+			;;
 		virt-what)
 			(
 				apt-get install -qy virt-what
 			) > /dev/null 2>&1 & showSpinner "> installing virt-what"
-		;;
+			;;
+		service)
+			(
+				local file="/lib/systemd/system/vdm.service"
+
+				# if [ -f $file ]
+				# then
+				#	systemctl stop vdm.service
+				#	systemctl disable vdm.service
+				# fi
+
+				if [ ! $(systemctl is-active vdm.service) = 'inactive' ];
+				then
+					systemctl stop vdm.service
+					systemctl disable vdm.service
+				fi
+
+				cat /dev/null > $file
+				echo "[Unit]" >> $file
+				echo "Description=Virtual Docker Machine (VDM)" >> $file
+				echo "Wants=network-online.target" >> $file
+				echo "After=network-online.target" >> $file
+				echo "[Service]" >> $file
+				echo "Type=oneshot" >> $file
+				echo "ExecStart=/usr/sbin/vdm service start" >> $file
+				echo "ExecStop=/usr/sbin/vdm service stop" >> $file
+				echo "RemainAfterExit=yes" >> $file
+				echo "[Install]" >> $file
+				echo "WantedBy=multi-user.target" >> $file
+
+				systemctl enable systemd-networkd.service
+				systemctl restart systemd-networkd.service
+				systemctl enable systemd-networkd-wait-online.service
+				systemctl restart systemd-networkd-wait-online.service
+				systemctl enable vdm.service
+				systemctl restart vdm.service
+			) > /dev/null 2>&1 & showSpinner "> installing service"
+			;;
 		docker)
 			(
 				local file="/etc/apt/sources.list.d/vdm.list"
-
 				if [ ! -f $file ]
 				then
 					echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > $file
@@ -133,19 +169,13 @@ install()
 				&& apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
 			) > /dev/null 2>&1 & showSpinner "> installing docker"
-		;;
-		git)
-			(
-				apt-get install -qy git \
-				&& configure git
-			) > /dev/null 2>&1 & showSpinner "> configuring git"
-		;;
+			;;
 		vmware)
 			local target
 
 			getTempDir target "vmware"
 
-        	(
+        	#(
         		install git \
         		&& apt-get install -qy zip \
         		&& git clone https://github.com/rasa/vmware-tools-patches.git $target \
@@ -154,8 +184,8 @@ install()
         		&& ./download-tools.sh latest \
         		&& ./untar-and-patch.sh \
         		&& ./compile.sh
-        	) > /dev/null 2>&1 & showSpinner "> installing vmware"
-		;;
+        	#) > /dev/null 2>&1 & showSpinner "> installing vmware"
+			;;
 		virtualbox)
 			local vbox_version=$(curl -s http://download.virtualbox.org/virtualbox/LATEST.TXT)
 			local target_dir
@@ -170,7 +200,27 @@ install()
 				&& mount -o loop,ro $target_file $target_dir \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
 			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
-		;;
+			;;
+		git)
+			(
+				local file="/etc/gitconfig"
+
+				if [ ! -f $file ]
+				then
+					cat /dev/null > $file
+					echo "[pack]" >> $file
+					echo "threads = 1" >> $file
+					echo "deltaCacheSize = 128m" >> $file
+					echo "packSizeLimit = 128m" >> $file
+					echo "windowMemory = 128m" >> $file
+					echo "[core]" >> $file
+					echo "packedGitLimit = 128m" >> $file
+					echo "packedGitWindowSize = 128m" >> $file
+				fi
+
+				apt-get install -qy git
+			) > /dev/null 2>&1 & showSpinner "> configuring git"
+			;;
 	esac
 }
 
@@ -202,7 +252,7 @@ configure()
 
 				systemctl restart systemd-networkd.service
 			) > /dev/null 2>&1 & showSpinner "> configuring interfaces"
-		;;
+			;;
 		aliases)
 			(
 				local file="/etc/profile.d/vdm.sh"
@@ -211,25 +261,7 @@ configure()
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
 				echo "alias down='docker-compose stop --timeout 600 && docker rm $(docker ps -a -q)';" >> $file
 			) > /dev/null 2>&1 & showSpinner "> configuring aliases"
-		;;
-		git)
-			(
-				local file="/etc/gitconfig"
-
-				if [ ! -f $file ]
-				then
-					cat /dev/null > $file
-					echo "[pack]" >> $file
-					echo "threads = 1" >> $file
-					echo "deltaCacheSize = 1024m" >> $file
-					echo "packSizeLimit = 1024m" >> $file
-					echo "windowMemory = 1024m" >> $file
-					echo "[core]" >> $file
-					echo "packedGitLimit = 1024m" >> $file
-					echo "packedGitWindowSize = 1024m" >> $file
-				fi
-			) > /dev/null 2>&1 & showSpinner "> configuring git"
-		;;
+			;;
 	esac
 }
 
@@ -238,19 +270,19 @@ update()
 	case "$1" in
 		sources)
 			(
-				apt-get -qy update
+				apt-get update -qy
 			) > /dev/null 2>&1 & showSpinner "> updating sources"
-		;;
+			;;
 		system)
 			(
 				apt-get -qy upgrade \
 				&& apt-get -qy dist-upgrade \
 				&& service lxd restart
 			) > /dev/null 2>&1 & showSpinner "> updating system"
-		;;
+			;;
 		vdm)
 			exec bash <(curl -s $VDM_URL_UPDATE)
-		;;
+			;;
 	esac
 }
 
@@ -265,12 +297,12 @@ wipe()
 			(
 				docker rm $(docker ps -a -q)
 			) > /dev/null 2>&1 & showSpinner "> wiping docker container"
-		;;
+			;;
 		images)
 			(
 				docker rmi $(docker images -q)
 			) > /dev/null 2>&1 & showSpinner "> wiping docker images"
-		;;
+			;;
 		vmware)
 			(
 				if [ -f "/usr/bin/vmware-uninstall-tools.pl" ]
@@ -289,7 +321,7 @@ wipe()
 				&& find /etc ! -readable -prune -iname "vmware*" -exec rm -rf {} \; \
 				&& find /tmp ! -readable -prune -iname "vmware*" -exec rm -rf {} \;
 			) > /dev/null 2>&1 & showSpinner "> wiping vmware"
-		;;
+			;;
 		virtualbox)
 			(
 				local service
@@ -328,36 +360,71 @@ case "$1" in
 	install)
 		logNotice "[VDM] install"
 
-		configure interfaces
-		update sources
-		update system
-		install openssh-server
-		install virt-what
-		install docker
-		configure aliases
-
-		case $(virt-what | sed -n 1p) in
-			vmware)
-				wipe vmware
-				install vmware
-			;;
-			virtualbox)
-				wipe virtualbox
-				install virtualbox
-			;;
-		esac
-	;;
+		configure interfaces \
+		&& wipe vmware \
+		&& wipe virtualbox \
+		&& update sources \
+		&& update system \
+		&& install openssh-server \
+		&& install virt-what \
+		&& install service \
+		&& install docker \
+		&& configure aliases
+		;;
 	update)
+		clear
+
 		logNotice "[VDM] update"
 
 		update sources \
 		&& update system \
 		&&  update vdm
-	;;
+		;;
+	service)
+		case "$2" in
+			start)
+				# Generate SSH keys
+				if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_rsa_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
+				fi
+
+				if [ ! -f "/etc/ssh/ssh_host_dsa_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_dsa_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_dsa_key -N '' -t dsa
+				fi
+
+				if [ ! -f "/etc/ssh/ssh_host_ecdsa_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_ecdsa_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_ecdsa_key -N '' -t ecdsa
+				fi
+
+				if [ ! -f "/etc/ssh/ssh_host_ed25519_key" ]
+				then
+					rm -rf /etc/ssh/ssh_host_ed25519_key*
+					ssh-keygen -q -h -f /etc/ssh/ssh_host_ed25519_key -N '' -t ed25519
+				fi
+
+				# Initialize mounts
+				mkdir -p /vdm
+			;;
+			stop)
+				wipe container \
+				&& find /vdm -maxdepth 1 -mindepth 1 -type d -exec bash -c 'saveRemove "$@"' bash {} \;
+			;;
+			*)
+				logError "Usage: vdm service [start|stop]"
+				exit 1
+				;;
+		esac
+		;;
 	*)
-		logError "Usage: vdm [install|update]"
+		logError "Usage: vdm [install|update|service [start|stop]]"
 		exit 1
-	;;
+		;;
 esac
 
 exit 0
