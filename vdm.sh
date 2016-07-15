@@ -8,7 +8,8 @@
 # http://tldp.org/HOWTO/Bash-Prog-Intro-HOWTO-3.html#ss3.3
 
 
-VDM_URL_UPDATE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
+VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
+VDM_URL_INIT="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/etc/init.d/vdm"
 VDM_URL_PROFILE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/etc/profile.d/vdm.sh"
 # VDM_LOG="/var/log/vdm.log"
 # VDM_LOG_ERROR="/var/log/vdm.error.log"
@@ -226,6 +227,8 @@ configure()
 		vdm)
 			(
 				curl -s $VDM_URL_PROFILE > /etc/profile.d/vdm.sh
+				curl -s $VDM_URL_INIT > /etc/init.d/vdm
+				update-rc.d vdm default
 			) > /dev/null 2>&1 & showSpinner "> configuring vdm"
 		;;
 		git)
