@@ -377,6 +377,8 @@ case "$1" in
 				esac
 
 				configure vdm
+
+				logNotice "> please reboot"
 			;;
 		esac
 	;;
@@ -385,7 +387,9 @@ case "$1" in
 
 		update sources \
 		&& update system \
-		&&  update vdm
+		&& update vdm
+
+		logNotice "> please reboot"
 	;;
 	service)
 		case "$2" in
@@ -403,7 +407,7 @@ case "$1" in
 		esac
 		;;
 	*)
-		logError "Usage: vdm [install|update|service]"
+		logError "Usage: vdm [install|update]"
 		exit 1
 	;;
 esac
