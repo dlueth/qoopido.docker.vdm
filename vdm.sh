@@ -347,6 +347,18 @@ wipe()
 	esac
 }
 
+clean()
+{
+        (
+        	wipe container \
+        	&& wipe images \
+        	&& rm -rf /tmp/* /var/tmp/* \
+        	&& apt-get -qy clean \
+        	&& apt-get -qy autoclean \
+        	&& apt-get -qy autoremove
+        ) > /dev/null 2>&1 & showSpinner "  > cleaning up"
+}
+
 case "$1" in
 	install)
 		case "$2" in
@@ -364,6 +376,8 @@ case "$1" in
 				configure interfaces \
 				&& update sources \
 				&& update system \
+				&& wipe vmware \
+				&& wipe virtualbox \
 				&& install openssh-server \
 				&& install virt-what \
 				&& install docker \
@@ -371,16 +385,15 @@ case "$1" in
 				&& {
 					case $(virt-what | sed -n 1p) in
 						vmware)
-							wipe vmware \
-							&& install vmware
+							install vmware
 						;;
 						virtualbox)
-							wipe virtualbox \
-							&& install virtualbox
+							install virtualbox
 						;;
 					esac
 				} \
-				&& configure vdm
+				&& configure vdm \
+				&& clean
 
 				logNotice "> please reboot"
 			;;
@@ -391,7 +404,8 @@ case "$1" in
 
 		update sources \
 		&& update system \
-		&& update vdm
+		&& update vdm \
+		&& clean
 
 		logNotice "> please reboot"
 	;;
