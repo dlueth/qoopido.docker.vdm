@@ -356,7 +356,7 @@ clean()
         	&& apt-get -qy clean \
         	&& apt-get -qy autoclean \
         	&& apt-get -qy autoremove
-        ) > /dev/null 2>&1 & showSpinner "  > cleaning up"
+        ) > /dev/null 2>&1 & showSpinner "> cleaning up"
 }
 
 case "$1" in
