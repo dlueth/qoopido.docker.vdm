@@ -187,6 +187,7 @@ install()
 				echo "WantedBy=multi-user.target" >> $file
 
 				systemctl enable vdm.service
+				systemctl restart vdm.service &
 			) > /dev/null 2>&1 & showSpinner "> installing service"
 			;;
 	esac
