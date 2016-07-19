@@ -361,26 +361,26 @@ case "$1" in
 			*)
 				logNotice "[VDM] install"
 
-				configure interfaces
-				update sources
-				update system
-				install openssh-server
-				install virt-what
-				install docker
-				install service
-
-				case $(virt-what | sed -n 1p) in
-					vmware)
-						wipe vmware
-						install vmware
-					;;
-					virtualbox)
-						wipe virtualbox
-						install virtualbox
-					;;
-				esac
-
-				configure vdm
+				configure interfaces \
+				&& update sources \
+				&& update system \
+				&& install openssh-server \
+				&& install virt-what \
+				&& install docker \
+				&& install service \
+				&& {
+					case $(virt-what | sed -n 1p) in
+						vmware)
+							wipe vmware \
+							&& install vmware
+						;;
+						virtualbox)
+							wipe virtualbox \
+							&& install virtualbox
+						;;
+					esac
+				} \
+				&& configure vdm
 
 				logNotice "> please reboot"
 			;;

@@ -43,11 +43,11 @@ then
 	exit 1
 fi
 
-# if [ $(systemctl is-active vdm.service) = 'inactive' ];
-# then
-#	logError "You need to have VDM installed!"
-#	exit 1
-# fi
+if [ $(systemctl is-active vdm.service) = 'inactive' ];
+then
+	logError "You need to have VDM installed!"
+	exit 1
+fi
 
 (
 	curl -s $VDM_URL > /usr/sbin/vdm \

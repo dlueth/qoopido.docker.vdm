@@ -49,11 +49,11 @@ then
 	exit 1
 fi
 
-if [ ! $(systemctl is-active vdm.service) = 'inactive' ];
-then
-	logError "VDM is already installed!"
-	exit 1
-fi
+# if [ ! $(systemctl is-active vdm.service) = 'inactive' ];
+# then
+#	logError "VDM is already installed!"
+#	exit 1
+# fi
 
 logNotice "[VDM] installer"
 
