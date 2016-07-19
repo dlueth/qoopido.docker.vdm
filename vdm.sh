@@ -339,17 +339,19 @@ wipe()
 				done
 
 				# remove filesystem remains
-				# rm -rf /opt/VBox* \
-				# && find /usr ! -readable -prune -iname "vbox*" -type d -exec rm -rf {} \; \
-				# && find /lib ! -readable -prune -iname "vbox*" -type d -exec rm -rf {} \; \
-				# && find /var ! -readable -prune -iname "vbox*" -type d -exec rm -rf {} \; \
-				# && find /run ! -readable -prune -iname "vbox*" -type d -exec rm -rf {} \; \
-				# && find /usr ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \; \
-				# && find /lib ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \; \
-				# && find /var ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \; \
-				# && find /run ! -readable -prune -iname "vbox*" -type f -exec rm -rf {} \;
-
-				find / ! -readable -prune -iname "*vbox*" -exec rm -rf {} \;
+				rm -rf /opt/VBox* \
+				&& find /etc ! -readable -prune -iname "*vbox*" -type d -exec rm -rf {} \; \
+				&& find /sbin ! -readable -prune -iname "*vbox*" -type d -exec rm -rf {} \; \
+				&& find /usr ! -readable -prune -iname "*vbox*" -type d -exec rm -rf {} \; \
+				&& find /lib ! -readable -prune -iname "*vbox*" -type d -exec rm -rf {} \; \
+				&& find /var ! -readable -prune -iname "*vbox*" -type d -exec rm -rf {} \; \
+				&& find /run ! -readable -prune -iname "*vbox*" -type d -exec rm -rf {} \; \
+				&& find /etc ! -readable -prune -iname "*vbox*" -type f -exec rm -rf {} \; \
+				&& find /sbin ! -readable -prune -iname "*vbox*" -type f -exec rm -rf {} \; \
+				&& find /usr ! -readable -prune -iname "*vbox*" -type f -exec rm -rf {} \; \
+				&& find /lib ! -readable -prune -iname "*vbox*" -type f -exec rm -rf {} \; \
+				&& find /var ! -readable -prune -iname "*vbox*" -type f -exec rm -rf {} \; \
+				&& find /run ! -readable -prune -iname "*vbox*" -type f -exec rm -rf {} \;
 			) > /dev/null 2>&1 & showSpinner "> wiping virtualbox"
 		;;
 	esac
