@@ -9,8 +9,6 @@
 
 
 VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
-VDM_URL_INIT="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/etc/init.d/vdm"
-VDM_URL_PROFILE="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/etc/profile.d/vdm.sh"
 # VDM_LOG="/var/log/vdm.log"
 # VDM_LOG_ERROR="/var/log/vdm.error.log"
 DISTRO_NAME=$(lsb_release -is)
@@ -226,9 +224,13 @@ configure()
 		;;
 		vdm)
 			(
-				curl -s $VDM_URL_PROFILE > /etc/profile.d/vdm.sh
-				curl -s $VDM_URL_INIT > /etc/init.d/vdm
-				update-rc.d vdm default
+				local file="/etc/profile.d/vdm.sh"
+
+				cat /dev/null > $file
+				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
+				echo "alias down='docker-compose stop --timeout 600 && (docker rm $(docker ps -a -q)) > /dev/null 2>&1';" >> $file
+
+				chmod +x $file
 			) > /dev/null 2>&1 & showSpinner "> configuring vdm"
 		;;
 		git)
@@ -398,6 +400,44 @@ case "$1" in
 		case "$2" in
 			start)
 				mkdir -p /vdm
+
+				case $(virt-what | sed -n 1p) in
+					vmware)
+						while [ ! -d /mnt/hgfs ]
+						do
+							sleep 1
+						done
+
+						symlinkVmwareMount()
+						{
+							target=${1/\/mnt\/hgfs\//\/vdm\/}
+
+							ln -sf $1 $target
+						}
+
+						export -f symlinkVmwareMount
+
+						find /mnt/hgfs -maxdepth 1 -mindepth 1 -type d -exec bash -c 'symlinkVmwareMount "$@"' bash {} \;
+					;;
+					virtualbox)
+				#		if [[ -z $(lsmod | grep vboxguest | sed -n 1p) ]]
+				#		then
+				#			update sources \
+				#			&& install virtualbox
+				#		fi
+
+				#		symlinkVirtualboxMount()
+				#		{
+				#			target=${1/\/media\/sf_/\/vdm\/}
+
+				#			ln -sf $1 $target
+				#		}
+
+				#		export -f symlinkVirtualboxMount
+
+				#		find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
+					;;
+				esac
 			;;
 			stop)
 				wipe container \
