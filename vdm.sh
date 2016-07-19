@@ -434,22 +434,16 @@ case "$1" in
 						find /mnt/hgfs -maxdepth 1 -mindepth 1 -type d -exec bash -c 'symlinkVmwareMount "$@"' bash {} \;
 					;;
 					virtualbox)
-				#		if [[ -z $(lsmod | grep vboxguest | sed -n 1p) ]]
-				#		then
-				#			update sources \
-				#			&& install virtualbox
-				#		fi
+						symlinkVirtualboxMount()
+						{
+							target=${1/\/media\/sf_/\/vdm\/}
 
-				#		symlinkVirtualboxMount()
-				#		{
-				#			target=${1/\/media\/sf_/\/vdm\/}
+							ln -sf $1 $target
+						}
 
-				#			ln -sf $1 $target
-				#		}
+						export -f symlinkVirtualboxMount
 
-				#		export -f symlinkVirtualboxMount
-
-				#		find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
+						find /media -maxdepth 1 -mindepth 1 -name "sf_*" -type d -exec bash -c 'symlinkVirtualboxMount "$@"' bash {} \;
 					;;
 				esac
 			;;
