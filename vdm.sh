@@ -108,6 +108,11 @@ fi
 install()
 {
 	case "$1" in
+		deborphan)
+			(
+				apt-get install -qy deborphan
+			) > /dev/null 2>&1 & showSpinner "> installing deborphan"
+		;;
 		openssh-server)
 			(
 				apt-get install -qy openssh-server
@@ -367,9 +372,11 @@ clean()
         (
         	wipe docker \
         	&& rm -rf /tmp/* /var/tmp/* \
+        	&& dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge \
         	&& apt-get -qy clean \
         	&& apt-get -qy autoclean \
-        	&& apt-get -qy autoremove
+        	&& apt-get -qy autoremove \
+        	&& deborphan | xargs apt-get -qy remove --purge
         ) > /dev/null 2>&1 & showSpinner "> cleaning up"
 }
 
@@ -392,6 +399,7 @@ case "$1" in
 				&& update system \
 				&& wipe vmware \
 				&& wipe virtualbox \
+				&& install deborphan \
 				&& install openssh-server \
 				&& install virt-what \
 				&& install docker \
