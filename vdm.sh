@@ -136,7 +136,7 @@ install()
 
 				getTempDir target "docker-gc"
 
-				apt-get install git devscripts debhelper build-essential dh-make \
+				apt-get install -qy docker-gcgit devscripts debhelper build-essential dh-make \
 				&& git clone https://github.com/spotify/docker-gc.git $target \
 				&& cd $target \
 				&& debuild -us -uc -b \
