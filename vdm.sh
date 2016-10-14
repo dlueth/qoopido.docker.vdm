@@ -476,7 +476,7 @@ case "$1" in
 		esac
 		;;
 	*)
-		logError "Usage: vdm [install|update]"
+		logError "Usage: vdm [install|update|cleanup|service]"
 		exit 1
 	;;
 esac
