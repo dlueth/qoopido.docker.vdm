@@ -121,6 +121,7 @@ install()
 		docker)
 			(
 				local file="/etc/apt/sources.list.d/vdm.list"
+				local target
 
 				if [ ! -f $file ]
 				then
@@ -132,7 +133,15 @@ install()
 				&& update sources \
 				&& apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
-			) > /dev/null 2>&1 & showSpinner "> installing docker"
+
+				getTempDir target "docker-gc"
+
+				apt-get install git devscripts debhelper build-essential dh-make \
+				&& git clone https://github.com/spotify/docker-gc.git $target \
+				&& cd $target \
+				&& debuild -us -uc -b \
+				&& find /tmp -regextype posix-egrep -regex ".*/docker-gc_[0-9]+\.[0-9]+\.[0-9]+_all\.deb" -exec dpkg -i {} \;
+			) > /dev/null 2>&1 & showSpinner "> installing docker & tools"
 		;;
 		git)
 			(
@@ -281,19 +290,15 @@ update()
 wipe()
 {
 	case "$1" in
-		container)
+		docker)
 			(
 				docker stop -t 600 $(docker ps -a -q -f status=running)
 			) > /dev/null 2>&1 & showSpinner "> stopping docker container"
 
 			(
-				docker rm $(docker ps -a -q)
-			) > /dev/null 2>&1 & showSpinner "> wiping docker container"
-		;;
-		images)
-			(
-				docker rmi $(docker images -q)
-			) > /dev/null 2>&1 & showSpinner "> wiping docker images"
+				docker volume ls -qf dangling=true | xargs -r docker volume rm \
+				&& docker-gc
+			) > /dev/null 2>&1 & showSpinner "> wiping docker container & images"
 		;;
 		vmware)
 			(
@@ -360,8 +365,7 @@ wipe()
 clean()
 {
         (
-        	wipe container \
-        	&& wipe images \
+        	wipe docker \
         	&& rm -rf /tmp/* /var/tmp/* \
         	&& apt-get -qy clean \
         	&& apt-get -qy autoclean \
@@ -408,6 +412,11 @@ case "$1" in
 				logNotice "> please reboot"
 			;;
 		esac
+	;;
+	cleanup)
+		logNotice "[VDM] clean"
+
+		clean
 	;;
 	update)
 		logNotice "[VDM] update"
@@ -457,7 +466,7 @@ case "$1" in
 				esac
 			;;
 			stop)
-				wipe container \
+				wipe docker \
 				&& find /vdm -maxdepth 1 -mindepth 1 -type d -exec bash -c 'saveRemove "$@"' bash {} \;
 			;;
 			*)
