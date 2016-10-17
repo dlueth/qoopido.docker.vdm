@@ -1,13 +1,8 @@
 1. Install VMWare or VirtualBox
-2. Create a new VM and install Ubuntu 16.04
-...
-6. run the following command as ```root```
-   ```bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)```
+2. Download ```https://github.com/dlueth/qoopido.docker.vdm/raw/development/vdm.ova```...
+3. ... and import it [^footnote]
+4. Download Ubuntu Server 16.04...
+5. .. and install it
+6. Run ```bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)``` as ```root``` in your VM
 
-
-1. download vdm.ova
-2. import into VirtualBox or VMWare
-3. download Ubuntu 14.04 LTS or 15.10
-4. install Ubuntu in imported VM
-6. run the following command as ```root```
-   ```bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/install.sh)```
+[^footnote] Make sure your VMs settings for host-only networking adapters are correct
