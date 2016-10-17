@@ -141,7 +141,7 @@ install()
 
 				getTempDir target "docker-gc"
 
-				apt-get install -qy docker-gcgit devscripts debhelper build-essential dh-make \
+				apt-get install -qy git devscripts debhelper build-essential dh-make \
 				&& git clone https://github.com/spotify/docker-gc.git $target \
 				&& cd $target \
 				&& debuild -us -uc -b \
@@ -183,6 +183,11 @@ install()
 				&& curl -s http://download.virtualbox.org/virtualbox/$vbox_version/VBoxGuestAdditions_$vbox_version.iso > $target_file \
 				&& mount -o loop,ro $target_file $target_dir \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
+
+				for user in $(cut -d: -f1 /etc/passwd)
+				do
+				    usermod -a -G vboxsf $user
+				done
 			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 		;;
 		service)
