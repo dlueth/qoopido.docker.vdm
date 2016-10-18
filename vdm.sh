@@ -1,16 +1,7 @@
 #!/bin/bash
 
-# @todo check logging options
-# @todo check removal of networks on build and re-apply via service
-
-# http://linuxcommand.org/wss0150.php
-# http://askubuntu.com/questions/323566/separate-etc-network-interfaces-file
-# http://tldp.org/HOWTO/Bash-Prog-Intro-HOWTO-3.html#ss3.3
-
 
 VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
-# VDM_LOG="/var/log/vdm.log"
-# VDM_LOG_ERROR="/var/log/vdm.error.log"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
@@ -123,10 +114,22 @@ install()
 				apt-get install -qy virt-what
 			) > /dev/null 2>&1 & showSpinner "> installing virt-what"
 		;;
+		docker-gc)
+		    (
+		        local target
+
+		        getTempDir target "docker-gc"
+
+				apt-get install -qy git devscripts debhelper build-essential dh-make \
+				&& git clone https://github.com/spotify/docker-gc.git $target \
+				&& cd $target \
+				&& debuild -us -uc -b \
+				&& find /tmp -regextype posix-egrep -regex ".*/docker-gc_[0-9]+\.[0-9]+\.[0-9]+_all\.deb" -exec dpkg -i {} \;
+			) > /dev/null 2>&1 & showSpinner "> installing docker-gc"
+		;;
 		docker)
 			(
 				local file="/etc/apt/sources.list.d/vdm.list"
-				local target
 
 				if [ ! -f $file ]
 				then
@@ -138,15 +141,7 @@ install()
 				&& update sources \
 				&& apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
-
-				getTempDir target "docker-gc"
-
-				apt-get install -qy git devscripts debhelper build-essential dh-make \
-				&& git clone https://github.com/spotify/docker-gc.git $target \
-				&& cd $target \
-				&& debuild -us -uc -b \
-				&& find /tmp -regextype posix-egrep -regex ".*/docker-gc_[0-9]+\.[0-9]+\.[0-9]+_all\.deb" -exec dpkg -i {} \;
-			) > /dev/null 2>&1 & showSpinner "> installing docker & tools"
+			) > /dev/null 2>&1 & showSpinner "> installing docker"
 		;;
 		git)
 			(
@@ -404,10 +399,11 @@ case "$1" in
 				&& update system \
 				&& wipe vmware \
 				&& wipe virtualbox \
-				&& install deborphan \
 				&& install openssh-server \
+				&& install deborphan \
 				&& install virt-what \
 				&& install docker \
+				&& install docker-gc \
 				&& install service \
 				&& {
 					case $(virt-what | sed -n 1p) in
