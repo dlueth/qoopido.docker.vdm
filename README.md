@@ -1,9 +1,9 @@
 1. Install VMWare or VirtualBox
-2. Download ```https://github.com/dlueth/qoopido.docker.vdm/raw/vdm.ova```...
+2. Download ```https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/master/vdm.ova```...
 3. ... and import it <sup id="a1">[1](#f1)</sup> <sup id="a2">[2](#f2)</sup>
 4. Download Ubuntu Server 16.04...
 5. .. and install it
-6. Run ```bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/install.sh)``` as ```root``` in your VM
+6. Run ```bash <(curl -s https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/master/install.sh)``` as ```root``` in your VM
 7. Add the shared folders you would like to use in your VM
 8. Reboot your VM
 
