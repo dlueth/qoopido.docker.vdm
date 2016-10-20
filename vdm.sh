@@ -109,6 +109,11 @@ install()
 				apt-get install -qy openssh-server
 			) > /dev/null 2>&1 & showSpinner "> installing openssh-server"
 		;;
+		nfs-common)
+			(
+				apt-get install -qy nfs-common
+			) > /dev/null 2>&1 & showSpinner "> installing nfs-common"
+		;;
 		virt-what)
 			(
 				apt-get install -qy virt-what
