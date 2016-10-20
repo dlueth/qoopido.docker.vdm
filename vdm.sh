@@ -406,10 +406,11 @@ case "$1" in
 				&& wipe vmware \
 				&& wipe virtualbox \
 				&& install openssh-server \
-				&& install deborphan \
+				&& install nfs-common \
 				&& install virt-what \
 				&& install docker \
 				&& install docker-gc \
+				&& install deborphan \
 				&& install service \
 				&& {
 					case $(virt-what | sed -n 1p) in
