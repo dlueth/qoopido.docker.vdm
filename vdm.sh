@@ -242,7 +242,7 @@ configure()
 
 				cat /dev/null > $file
 				echo "alias up='docker-compose up -d --timeout 600 && docker-compose logs';" >> $file
-				echo "alias down='docker-compose stop --timeout 600 && (docker rm $(docker ps -a -q)) > /dev/null 2>&1';" >> $file
+				echo "alias down='docker-compose stop --timeout 600 && (docker-compose rm -f) > /dev/null 2>&1';" >> $file
 
 				chmod +x $file
 			) > /dev/null 2>&1 & showSpinner "> configuring vdm"
@@ -301,7 +301,8 @@ wipe()
 			) > /dev/null 2>&1 & showSpinner "> stopping docker container"
 
 			(
-				docker volume ls -qf dangling=true | xargs -r docker volume rm \
+				docker rm $(docker ps -a -q) \
+				&& docker volume ls -qf dangling=true | xargs -r docker volume rm \
 				&& docker-gc
 			) > /dev/null 2>&1 & showSpinner "> wiping docker container & images"
 		;;
