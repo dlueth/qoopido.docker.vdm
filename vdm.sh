@@ -146,6 +146,16 @@ install()
 				&& update sources \
 				&& apt-get remove -qy lxc-docker --purge \
 				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
+
+				groupadd docker > /dev/null 2>&1
+
+				for user in $(cut -d: -f1 /etc/passwd)
+				do
+				    usermod -a -G docker $user
+				done
+
+				service docker restart
+				newgrp docker
 			) > /dev/null 2>&1 & showSpinner "> installing docker"
 		;;
 		git)
@@ -184,10 +194,14 @@ install()
 				&& mount -o loop,ro $target_file $target_dir \
 				&& ( $target_dir/VBoxLinuxAdditions.run --nox11 || true )
 
+				groupadd vboxsf > /dev/null 2>&1
+
 				for user in $(cut -d: -f1 /etc/passwd)
 				do
 				    usermod -a -G vboxsf $user
 				done
+
+				newgrp vboxsf
 			) > /dev/null 2>&1 & showSpinner "> installing virtualbox"
 		;;
 		service)
