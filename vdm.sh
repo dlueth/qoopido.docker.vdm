@@ -320,7 +320,8 @@ wipe()
 			) > /dev/null 2>&1 & showSpinner "> stopping docker container"
 
 			(
-				docker rm $(docker ps -a -q) \
+				docker ps -a -q | xargs -r docker rm \
+				&& docker images -q | xargs -r docker rmi \
 				&& docker volume ls -qf dangling=true | xargs -r docker volume rm \
 				&& docker-gc
 			) > /dev/null 2>&1 & showSpinner "> wiping docker container & images"
@@ -389,8 +390,9 @@ wipe()
 
 clean()
 {
+		wipe docker
+		
         (
-        	wipe docker \
         	&& rm -rf /tmp/* /var/tmp/* \
         	&& dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge \
         	&& apt-get -qy clean \
