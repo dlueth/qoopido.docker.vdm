@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 
 VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
 DISTRO_NAME=$(lsb_release -is)
@@ -304,7 +304,7 @@ update()
 		;;
 		vdm)
 			(
-				exec bash <(curl -s $VDM_URL_UPDATE) \
+				exec bash <(curl -s $VDM_URL) \
 				&& configure vdm
 			) > /dev/null 2>&1 & showSpinner "> updating vdm"
 		;;
