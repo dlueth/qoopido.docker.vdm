@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh"
+UUID=$(cat /proc/sys/kernel/random/uuid)
+VDM_URL="https://raw.githubusercontent.com/dlueth/qoopido.docker.vdm/development/update.sh?uuid=${UUID}"
 DISTRO_NAME=$(lsb_release -is)
 DISTRO_CODENAME=$(lsb_release -cs)
 DISTRO_VERSION=$(lsb_release -rs)
