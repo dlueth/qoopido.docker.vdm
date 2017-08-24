@@ -120,33 +120,23 @@ install()
 				apt-get install -qy virt-what
 			) > /dev/null 2>&1 & showSpinner "> installing virt-what"
 		;;
-		docker-gc)
-		    (
-		        local target
-
-		        getTempDir target "docker-gc"
-
-				apt-get install -qy git devscripts debhelper build-essential dh-make \
-				&& git clone https://github.com/spotify/docker-gc.git $target \
-				&& cd $target \
-				&& debuild -us -uc -b \
-				&& find /tmp -regextype posix-egrep -regex ".*/docker-gc_[0-9]+\.[0-9]+\.[0-9]+_all\.deb" -exec dpkg -i {} \;
-			) > /dev/null 2>&1 & showSpinner "> installing docker-gc"
-		;;
 		docker)
 			(
 				local file="/etc/apt/sources.list.d/vdm.list"
+				local url=$(curl -s https://api.github.com/repos/docker/compose/releases | grep browser_download_url | grep 'Linux-x86_64' | head -n 1 | cut -d '"' -f 4)
 
 				if [ ! -f $file ]
 				then
-					echo "deb https://apt.dockerproject.org/repo ubuntu-${DISTRO_CODENAME} main" > $file
+					echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu ${DISTRO_CODENAME} stable" > $file
 				fi
 
-				apt-get install -qy apt-transport-https ca-certificates \
-				&& apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D \
+				apt-get install -qy apt-transport-https ca-certificates software-properties-common \
+				&& curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - \
 				&& update sources \
 				&& apt-get remove -qy lxc-docker --purge \
-				&& apt-get install -qy linux-image-extra-$(uname -r) docker-engine docker-compose
+				&& apt-get install -qy docker-ce \
+				&& curl -fsSL -o /usr/local/bin/docker-compose ${url} \
+				&& chmod +x /usr/local/bin/docker-compose
 
 				groupadd docker > /dev/null 2>&1
 
@@ -324,7 +314,10 @@ wipe()
 				docker ps -a -q | xargs -r docker rm \
 				&& docker images -q | xargs -r docker rmi \
 				&& docker volume ls -qf dangling=true | xargs -r docker volume rm \
-				&& docker-gc
+				&& docker system prune --force \
+				&& systemctl stop docker \
+				&& rm -rf /var/lib/docker/aufs \
+				&& systemctl start docker
 			) > /dev/null 2>&1 & showSpinner "> wiping docker container & images"
 		;;
 		vmware)
@@ -392,7 +385,7 @@ wipe()
 clean()
 {
 		wipe docker
-		
+
         (
         	rm -rf /tmp/* /var/tmp/* \
         	&& dpkg -l linux-{image,headers}-* | awk '/^ii/{print $2}' | egrep '[0-9]+\.[0-9]+\.[0-9]+' | awk 'BEGIN{FS="-"}; {if ($3 ~ /[0-9]+/) print $3"-"$4,$0; else if ($4 ~ /[0-9]+/) print $4"-"$5,$0}' | sort -k1,1 --version-sort -r | sed -e "1,/$(uname -r | cut -f1,2 -d"-")/d" | grep -v -e `uname -r | cut -f1,2 -d"-"` | awk '{print $2}' | xargs apt-get -qy purge \
@@ -426,7 +419,6 @@ case "$1" in
 				&& install nfs-common \
 				&& install virt-what \
 				&& install docker \
-				&& install docker-gc \
 				&& install deborphan \
 				&& install service \
 				&& {
